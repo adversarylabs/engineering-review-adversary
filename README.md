@@ -20,3 +20,7 @@ adversary pack --check .
 Model-backed execution is configured by the adversary CLI. The adversary itself does not read provider API tokens.
 
 See [the review philosophy](docs/review-philosophy.md) for its authority and review voice.
+
+## Project
+
+Source is available in the [Engineering Review repository](https://github.com/adversarylabs/engineering-review-adversary). Engineering Review is licensed under the [MIT License](LICENSE).
