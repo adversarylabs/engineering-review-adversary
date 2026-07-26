@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "overall": {
+    "verdict": "ready-with-minor-improvements",
+    "risk": "low",
+    "ship": true,
+    "summary": "The change is straightforward and validated, with one small source of policy drift worth consolidating.",
+    "primaryConcern": ""
+  },
+  "observations": [
+    {
+      "id": "eligibility-policy-duplication",
+      "title": "Duplicated eligibility policy",
+      "category": "maintainability",
+      "severity": "low",
+      "confidence": "high",
+      "principle": "A business decision should have one authoritative implementation.",
+      "summary": "Preview and Apply encode the same eligibility rule independently.",
+      "impact": "A future policy change can make the preview disagree with the operation it predicts.",
+      "recommendation": "Extract the eligibility decision into one private function used by both paths.",
+      "tradeoffs": "This adds a small indirection, but it removes a meaningful consistency hazard without introducing a new abstraction layer.",
+      "evidence": [
+        {
+          "sourceId": "source:1",
+          "line": 32,
+          "detail": "Preview evaluates active status and country inline."
+        },
+        {
+          "sourceId": "source:1",
+          "line": 40,
+          "detail": "Apply repeats the inverse of the same policy."
+        }
+      ]
+    }
+  ],
+  "strengths": [
+    {
+      "summary": "The service keeps storage behind a narrow dependency and propagates caller context.",
+      "evidence": [
+        {
+          "sourceId": "source:1",
+          "line": 15,
+          "detail": "The Store boundary exposes only the account lookup the service needs."
+        }
+      ]
+    },
+    {
+      "summary": "The test checks that preview and execution currently agree on rejection behavior.",
+      "evidence": [
+        {
+          "sourceId": "source:2",
+          "line": 17,
+          "detail": "One scenario exercises both public paths."
+        }
+      ]
+    }
+  ]
+}

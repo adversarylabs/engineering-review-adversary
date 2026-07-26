@@ -1,0 +1,156 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "enum": [1]
+    },
+    "overall": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "verdict": {
+          "type": "string",
+          "enum": [
+            "well-engineered",
+            "ready-with-minor-improvements",
+            "correct-but-over-engineered",
+            "significant-maintainability-concerns",
+            "incomplete-implementation",
+            "high-operational-risk"
+          ]
+        },
+        "risk": {
+          "type": "string",
+          "enum": ["none", "low", "medium", "high", "critical"]
+        },
+        "ship": {
+          "type": "boolean"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "primaryConcern": {
+          "type": "string"
+        }
+      },
+      "required": ["verdict", "risk", "ship", "summary", "primaryConcern"]
+    },
+    "observations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "correctness",
+              "completeness",
+              "maintainability",
+              "readability",
+              "architecture",
+              "risk",
+              "validation"
+            ]
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "critical"]
+          },
+          "confidence": {
+            "type": "string",
+            "enum": ["medium", "high"]
+          },
+          "principle": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "impact": {
+            "type": "string"
+          },
+          "recommendation": {
+            "type": "string"
+          },
+          "tradeoffs": {
+            "type": "string"
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "sourceId": {
+                  "type": "string"
+                },
+                "line": {
+                  "type": "integer"
+                },
+                "detail": {
+                  "type": "string"
+                }
+              },
+              "required": ["sourceId", "line", "detail"]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "category",
+          "severity",
+          "confidence",
+          "principle",
+          "summary",
+          "impact",
+          "recommendation",
+          "tradeoffs",
+          "evidence"
+        ]
+      }
+    },
+    "strengths": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "summary": {
+            "type": "string"
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "sourceId": {
+                  "type": "string"
+                },
+                "line": {
+                  "type": "integer"
+                },
+                "detail": {
+                  "type": "string"
+                }
+              },
+              "required": ["sourceId", "line", "detail"]
+            }
+          }
+        },
+        "required": ["summary", "evidence"]
+      }
+    }
+  },
+  "required": ["schemaVersion", "overall", "observations", "strengths"]
+}

@@ -1,0 +1,136 @@
+{
+  "assessment": {
+    "risk": "high",
+    "summary": "High operational risk — The new calculation can be switched on for every request at once, with no scoped rollout, failure containment, or evidence for the activated path."
+  },
+  "positives": [
+    {
+      "key": "engineering-review.strength.The legacy calculation remains available as an explicit implementation path.",
+      "summary": "The legacy calculation remains available as an explicit implementation path.",
+      "evidence": [
+        {
+          "location": {
+            "file": "src/main/java/PricingService.java",
+            "line": 11
+          },
+          "message": "The existing behavior is retained behind legacyQuote.",
+          "snippet": "        }\n        return legacyQuote(order);\n    }",
+          "data": {
+            "sourceId": "source:1",
+            "status": "changed"
+          }
+        }
+      ],
+      "metadata": {
+        "source": "model"
+      }
+    }
+  ],
+  "observations": [],
+  "findings": [
+    {
+      "id": "finding-39e74232",
+      "ruleId": "engineering-review.risk",
+      "groupKey": "engineering-review.global-pricing-cutover",
+      "title": "All-at-once pricing cutover",
+      "category": "risk",
+      "severity": "high",
+      "confidence": "high",
+      "summary": "One process-wide mutable flag routes every quote to the new calculator immediately.",
+      "whyItMatters": "High-impact behavior changes should constrain blast radius and preserve a dependable rollback path. A defect changes prices for the full process population, and calculator failures have no local fallback to the established behavior.",
+      "impact": "A defect changes prices for the full process population, and calculator failures have no local fallback to the established behavior.",
+      "evidence": [
+        {
+          "location": {
+            "file": "src/main/java/PricingService.java",
+            "line": 4
+          },
+          "message": "The feature decision is a process-wide static value.",
+          "snippet": "public final class PricingService {\n    private static volatile boolean newPricing =\n        Boolean.parseBoolean(System.getenv(\"NEW_PRICING\"));"
+        },
+        {
+          "location": {
+            "file": "src/main/java/PricingService.java",
+            "line": 8
+          },
+          "message": "Every quote takes the new path when the single flag is true.",
+          "snippet": "    public BigDecimal quote(Order order) {\n        if (newPricing) {\n            return new PricingCalculator().calculate(order);"
+        },
+        {
+          "location": {
+            "file": "src/main/java/PricingService.java",
+            "line": 9
+          },
+          "message": "The new calculation has no failure containment or fallback.",
+          "snippet": "        if (newPricing) {\n            return new PricingCalculator().calculate(order);\n        }"
+        }
+      ],
+      "recommendation": "Introduce the new path behind a scoped rollout decision and define failure handling that can return traffic to the legacy calculation quickly. A cohort or tenant-aware decision adds rollout machinery, but pricing correctness justifies that cost and the old implementation already provides a natural fallback.",
+      "remediation": {
+        "complexity": "large"
+      },
+      "tags": [
+        "engineering-review",
+        "model-backed"
+      ],
+      "metadata": {
+        "source": "model",
+        "observationId": "global-pricing-cutover",
+        "principle": "High-impact behavior changes should constrain blast radius and preserve a dependable rollback path.",
+        "tradeoffs": "A cohort or tenant-aware decision adds rollout machinery, but pricing correctness justifies that cost and the old implementation already provides a natural fallback."
+      }
+    },
+    {
+      "id": "finding-666e0060",
+      "ruleId": "engineering-review.validation",
+      "groupKey": "engineering-review.activated-path-unvalidated",
+      "title": "Unvalidated activated pricing path",
+      "category": "validation",
+      "severity": "high",
+      "confidence": "high",
+      "summary": "The included test covers only the legacy quote while the new calculator becomes runtime-selectable.",
+      "whyItMatters": "The highest-risk branch of a behavior change needs direct validation before it can be activated. The cutover can be deployed without evidence that the new result or its failure behavior is correct.",
+      "impact": "The cutover can be deployed without evidence that the new result or its failure behavior is correct.",
+      "evidence": [
+        {
+          "location": {
+            "file": "src/main/java/PricingService.java",
+            "line": 7
+          },
+          "message": "quote now contains a runtime-selectable new branch.",
+          "snippet": "\n    public BigDecimal quote(Order order) {\n        if (newPricing) {"
+        },
+        {
+          "location": {
+            "file": "src/test/java/PricingServiceTest.java",
+            "line": 7
+          },
+          "message": "The only scenario asserts legacy subtotal behavior.",
+          "snippet": "    @Test\n    void legacyQuoteUsesSubtotal() {\n        PricingService service = new PricingService();"
+        }
+      ],
+      "recommendation": "Validate representative new-pricing results and failure behavior through the same quote boundary used in production. Focused boundary scenarios are sufficient for this change; a detailed testing strategy belongs in a specialist review.",
+      "remediation": {
+        "complexity": "large"
+      },
+      "tags": [
+        "engineering-review",
+        "model-backed"
+      ],
+      "metadata": {
+        "source": "model",
+        "observationId": "activated-path-unvalidated",
+        "principle": "The highest-risk branch of a behavior change needs direct validation before it can be activated.",
+        "tradeoffs": "Focused boundary scenarios are sufficient for this change; a detailed testing strategy belongs in a specialist review."
+      }
+    }
+  ],
+  "opinion": {
+    "ship": false,
+    "summary": "I would address the all-at-once pricing cutover before merging."
+  },
+  "suppressed": {
+    "observations": 0,
+    "findings": 0
+  }
+}
