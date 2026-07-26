@@ -39,6 +39,7 @@ test("model request delegates bounded repository retrieval to the SDK", () => {
   const input = request.input as Record<string, unknown>;
 
   assert.equal("sources" in input, false);
+  assert.equal(request.budget?.maximumOutputTokens, 12_000);
   assert.equal(request.budget?.timeoutMs, 300_000);
   assert.deepEqual(request.tools?.repository?.include, [
     "*.go",
