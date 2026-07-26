@@ -48,7 +48,7 @@ export function buildModelReviewRequest(
     input: prepareModelInput(change),
     schema: modelSchema as Record<string, unknown>,
     budget: {
-      maximumOutputTokens: 6_000,
+      maximumOutputTokens: 12_000,
       timeoutMs: 300_000,
     },
     tools: {
