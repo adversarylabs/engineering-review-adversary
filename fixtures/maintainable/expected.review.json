@@ -16,8 +16,7 @@
           "message": "The Store boundary exposes only the account lookup the service needs.",
           "snippet": "\ntype Store interface {\n\tAccount(context.Context, string) (Account, error)",
           "data": {
-            "sourceId": "source:1",
-            "status": "changed"
+            "citationId": "repo:read:1"
           }
         }
       ],
@@ -37,8 +36,7 @@
           "message": "One scenario exercises both public paths.",
           "snippet": "\nfunc TestPreviewAndApplyAgree(t *testing.T) {\n\tservice := NewService(fakeStore{account: Account{Active: false, Country: \"us\"}})",
           "data": {
-            "sourceId": "source:2",
-            "status": "changed"
+            "citationId": "repo:read:2"
           }
         }
       ],

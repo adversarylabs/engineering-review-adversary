@@ -16,8 +16,7 @@
           "message": "pause guards the Running precondition.",
           "snippet": "pub fn pause(state: &mut JobState) -> Result<(), &'static str> {\n    if *state != JobState::Running {\n        return Err(\"only running jobs can be paused\");",
           "data": {
-            "sourceId": "source:1",
-            "status": "changed"
+            "citationId": "repo:read:1"
           }
         }
       ],

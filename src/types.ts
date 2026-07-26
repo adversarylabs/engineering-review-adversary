@@ -12,27 +12,10 @@ export type ReviewCategory = (typeof reviewCategories)[number];
 export type ReviewSeverity = "low" | "medium" | "high" | "critical";
 export type ReviewRisk = "none" | ReviewSeverity;
 
-export interface DiscoveredSource {
-  id: string;
-  path: string;
-  status: "changed" | "context";
-  content: string;
-  truncated: boolean;
-  lines: string[];
-}
-
-export interface Discovery {
-  sources: DiscoveredSource[];
-  candidates: number;
-  omitted: number;
-  totalCharacters: number;
-}
-
 export interface ModelEvidence {
-  sourceId: string;
+  citationId: string;
   line: number;
   detail: string;
-  quote: string;
 }
 
 export interface ModelObservation {

@@ -9,13 +9,15 @@ import {
   type ReviewModel,
 } from "@adversarylabs/sdk";
 import { createApp } from "../src/index.ts";
+import { repositoryReviewModel } from "./repository-model.ts";
 
 test("placeholder observation prose receives one bounded repair attempt and then fails closed", async () => {
   const root = await mkdtemp(join(tmpdir(), "engineering-review-placeholder-"));
   await writeFile(join(root, "main.go"), "package main\n");
   let calls = 0;
-  const model: ReviewModel = {
-    async review<T>(request: ModelReviewRequest) {
+  const model: ReviewModel = repositoryReviewModel(
+    ["main.go"],
+    async <T>(request: ModelReviewRequest) => {
       calls += 1;
       if (calls === 2) assert.match(request.prompt, /REPAIR REQUIREMENT/);
       return {
@@ -40,10 +42,9 @@ test("placeholder observation prose receives one bounded repair attempt and then
             recommendation: "Implement the missing behavior through the existing public boundary.",
             tradeoffs: "The additional path should remain localized to the current boundary.",
             evidence: [{
-              sourceId: "source:1",
+              citationId: "repo:read:1",
               line: 1,
               detail: "The package is the prepared source.",
-              quote: "package main",
             }],
           }],
           strengths: [],
@@ -52,7 +53,7 @@ test("placeholder observation prose receives one bounded repair attempt and then
         model: "fixture",
       };
     },
-  };
+  );
 
   await assert.rejects(
     createApp().run({ input: { source: { path: root } }, model }),
@@ -66,8 +67,9 @@ test("a placeholder overall summary is synthesized from the accepted review stat
   const root = await mkdtemp(join(tmpdir(), "engineering-review-overall-"));
   await writeFile(join(root, "main.go"), "package main\n");
   let calls = 0;
-  const model: ReviewModel = {
-    async review<T>() {
+  const model: ReviewModel = repositoryReviewModel(
+    ["main.go"],
+    async <T>() => {
       calls += 1;
       return {
         output: {
@@ -86,7 +88,7 @@ test("a placeholder overall summary is synthesized from the accepted review stat
         model: "fixture",
       };
     },
-  };
+  );
 
   const result = await createApp().run({
     input: { source: { path: root } },
@@ -99,11 +101,12 @@ test("a placeholder overall summary is synthesized from the accepted review stat
   assert.equal(result.opinion?.ship, true);
 });
 
-test("fabricated evidence quotes are rejected instead of presented", async () => {
+test("fabricated citation IDs are rejected instead of presented", async () => {
   const root = await mkdtemp(join(tmpdir(), "engineering-review-evidence-"));
   await writeFile(join(root, "main.go"), "package main\n\nfunc ready() bool { return true }\n");
-  const model: ReviewModel = {
-    async review<T>() {
+  const model: ReviewModel = repositoryReviewModel(
+    ["main.go"],
+    async <T>() => {
       return {
         output: {
           schemaVersion: 1,
@@ -126,10 +129,9 @@ test("fabricated evidence quotes are rejected instead of presented", async () =>
             recommendation: "Implement the missing transition and validate it through the public boundary.",
             tradeoffs: "The additional path should remain localized to the existing boundary.",
             evidence: [{
-              sourceId: "source:1",
+              citationId: "repo:read:999",
               line: 3,
-              detail: "This quote is not actually present.",
-              quote: "func missing()",
+              detail: "This citation ID was never created by a repository read.",
             }],
           }],
           strengths: [],
@@ -138,7 +140,7 @@ test("fabricated evidence quotes are rejected instead of presented", async () =>
         model: "fixture",
       };
     },
-  };
+  );
 
   await assert.rejects(
     createApp().run({ input: { source: { path: root } }, model }),
@@ -147,11 +149,12 @@ test("fabricated evidence quotes are rejected instead of presented", async () =>
   );
 });
 
-test("source paths are accepted as citation aliases when the quote is exact", async () => {
+test("prepared repository citations resolve to source locations", async () => {
   const root = await mkdtemp(join(tmpdir(), "engineering-review-path-evidence-"));
   await writeFile(join(root, "main.go"), "package main\n\nfunc enabled() bool { return true }\n");
-  const model: ReviewModel = {
-    async review<T>() {
+  const model: ReviewModel = repositoryReviewModel(
+    ["main.go"],
+    async <T>() => {
       return {
         output: {
           schemaVersion: 1,
@@ -174,10 +177,9 @@ test("source paths are accepted as citation aliases when the quote is exact", as
             recommendation: "Move the decision behind the existing configuration boundary when configurability is required.",
             tradeoffs: "Keeping the literal is reasonable until the policy actually needs to vary.",
             evidence: [{
-              sourceId: "main.go",
+              citationId: "repo:read:1",
               line: 3,
               detail: "The decision is a literal return value.",
-              quote: "func enabled() bool { return true }",
             }],
           }],
           strengths: [],
@@ -186,7 +188,7 @@ test("source paths are accepted as citation aliases when the quote is exact", as
         model: "fixture",
       };
     },
-  };
+  );
 
   const result = await createApp().run({
     input: { source: { path: root } },
@@ -200,8 +202,9 @@ test("source paths are accepted as citation aliases when the quote is exact", as
 test("self-negating observations cannot veto approval", async () => {
   const root = await mkdtemp(join(tmpdir(), "engineering-review-actionability-"));
   await writeFile(join(root, "main.go"), "package main\n\nfunc ready() bool { return true }\n");
-  const model: ReviewModel = {
-    async review<T>() {
+  const model: ReviewModel = repositoryReviewModel(
+    ["main.go"],
+    async <T>() => {
       return {
         output: {
           schemaVersion: 1,
@@ -224,10 +227,9 @@ test("self-negating observations cannot veto approval", async () => {
             recommendation: "No action needed; keep the direct implementation until variation exists.",
             tradeoffs: "Adding the helper now would be optional ceremony.",
             evidence: [{
-              sourceId: "source:1",
+              citationId: "repo:read:1",
               line: 3,
               detail: "The current implementation is one direct function.",
-              quote: "func ready() bool { return true }",
             }],
           }],
           strengths: [],
@@ -236,7 +238,7 @@ test("self-negating observations cannot veto approval", async () => {
         model: "fixture",
       };
     },
-  };
+  );
 
   const result = await createApp().run({
     input: { source: { path: root } },

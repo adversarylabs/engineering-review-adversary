@@ -6,6 +6,7 @@ import { pathToFileURL, fileURLToPath } from "node:url";
 import test from "node:test";
 import type { ModelReviewRequest, ReviewModel } from "@adversarylabs/sdk";
 import type { EngineeringReviewOutput } from "../src/types.ts";
+import { repositoryReviewModel } from "./repository-model.ts";
 
 const projectRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -66,11 +67,12 @@ test("the published runtime executes without node_modules", async () => {
     observations: [],
     strengths: [],
   };
-  const model: ReviewModel = {
-    async review<T>(_request: ModelReviewRequest) {
+  const model: ReviewModel = repositoryReviewModel(
+    ["main.go"],
+    async <T>(_request: ModelReviewRequest) => {
       return { output: output as T, provider: "fixture", model: "fixture" };
     },
-  };
+  );
   const result = await runtime.createApp().run({
     input: { source: { path: repository } },
     model,

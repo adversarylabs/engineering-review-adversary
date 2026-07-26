@@ -21,22 +21,19 @@
       "tradeoffs": "This gives up speculative extensibility while retaining the seam that is already useful for callers and tests.",
       "evidence": [
         {
-          "sourceId": "source:1",
-          "line": 8,
-        "detail": "A strategy protocol is introduced for one implementation.",
-        "quote": "class FlagStrategy(Protocol):"
+          "line": 9,
+          "detail": "A strategy protocol is introduced for one implementation.",
+          "citationId": "repo:read:1"
         },
         {
-          "sourceId": "source:1",
           "line": 21,
-        "detail": "The factory selects only the boolean strategy.",
-        "quote": "class StrategyFactory:"
+          "detail": "The factory selects only the boolean strategy.",
+          "citationId": "repo:read:1"
         },
         {
-          "sourceId": "source:1",
           "line": 38,
-        "detail": "Every call constructs the entire abstraction chain.",
-        "quote": "def feature_enabled(source: ValueSource, key: str) -> bool:"
+          "detail": "Every call constructs the entire abstraction chain.",
+          "citationId": "repo:read:1"
         }
       ]
     }
@@ -46,10 +43,9 @@
       "summary": "External value access is separated behind a small source interface.",
       "evidence": [
         {
-          "sourceId": "source:1",
           "line": 5,
-        "detail": "Callers can provide values without coupling evaluation to an environment API.",
-        "quote": "class ValueSource(Protocol):"
+          "detail": "Callers can provide values without coupling evaluation to an environment API.",
+          "citationId": "repo:read:1"
         }
       ]
     }

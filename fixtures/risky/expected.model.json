@@ -21,22 +21,19 @@
       "tradeoffs": "A cohort or tenant-aware decision adds rollout machinery, but pricing correctness justifies that cost and the old implementation already provides a natural fallback.",
       "evidence": [
         {
-          "sourceId": "source:1",
           "line": 4,
-        "detail": "The feature decision is a process-wide static value.",
-        "quote": "private static volatile boolean newPricing ="
+          "detail": "The feature decision is a process-wide static value.",
+          "citationId": "repo:read:1"
         },
         {
-          "sourceId": "source:1",
           "line": 8,
-        "detail": "Every quote takes the new path when the single flag is true.",
-        "quote": "if (newPricing) {"
+          "detail": "Every quote takes the new path when the single flag is true.",
+          "citationId": "repo:read:1"
         },
         {
-          "sourceId": "source:1",
           "line": 9,
-        "detail": "The new calculation has no failure containment or fallback.",
-        "quote": "return new PricingCalculator().calculate(order);"
+          "detail": "The new calculation has no failure containment or fallback.",
+          "citationId": "repo:read:1"
         }
       ]
     },
@@ -53,16 +50,14 @@
       "tradeoffs": "Focused boundary scenarios are sufficient for this change; a detailed testing strategy belongs in a specialist review.",
       "evidence": [
         {
-          "sourceId": "source:2",
           "line": 7,
-        "detail": "The only scenario asserts legacy subtotal behavior.",
-        "quote": "void legacyQuoteUsesSubtotal() {"
+          "detail": "The only scenario asserts legacy subtotal behavior.",
+          "citationId": "repo:read:2"
         },
         {
-          "sourceId": "source:1",
           "line": 7,
-        "detail": "quote now contains a runtime-selectable new branch.",
-        "quote": "public BigDecimal quote(Order order) {"
+          "detail": "quote now contains a runtime-selectable new branch.",
+          "citationId": "repo:read:1"
         }
       ]
     }
@@ -72,10 +67,9 @@
       "summary": "The legacy calculation remains available as an explicit implementation path.",
       "evidence": [
         {
-          "sourceId": "source:1",
           "line": 11,
-        "detail": "The existing behavior is retained behind legacyQuote.",
-        "quote": "return legacyQuote(order);"
+          "detail": "The existing behavior is retained behind legacyQuote.",
+          "citationId": "repo:read:1"
         }
       ]
     }
