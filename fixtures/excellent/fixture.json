@@ -1,0 +1,6 @@
+{
+  "changedFiles": [
+    "src/token-bucket.ts",
+    "test/token-bucket.test.ts"
+  ]
+}

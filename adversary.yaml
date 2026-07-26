@@ -1,0 +1,74 @@
+name: engineering-review
+version: 0.0.1
+description: Reviews proposed changes with Staff-level engineering judgment across languages.
+
+triggers:
+  manual: true
+  files_changed:
+    - "*.go"
+    - "**/*.go"
+    - "*.ts"
+    - "**/*.ts"
+    - "*.tsx"
+    - "**/*.tsx"
+    - "*.js"
+    - "**/*.js"
+    - "*.jsx"
+    - "**/*.jsx"
+    - "*.py"
+    - "**/*.py"
+    - "*.rs"
+    - "**/*.rs"
+    - "*.java"
+    - "**/*.java"
+    - "*.cs"
+    - "**/*.cs"
+    - "*.kt"
+    - "**/*.kt"
+    - "*.kts"
+    - "**/*.kts"
+
+detection:
+  files:
+    - "*.go"
+    - "**/*.go"
+    - "*.ts"
+    - "**/*.ts"
+    - "*.tsx"
+    - "**/*.tsx"
+    - "*.js"
+    - "**/*.js"
+    - "*.jsx"
+    - "**/*.jsx"
+    - "*.py"
+    - "**/*.py"
+    - "*.rs"
+    - "**/*.rs"
+    - "*.java"
+    - "**/*.java"
+    - "*.cs"
+    - "**/*.cs"
+    - "*.kt"
+    - "**/*.kt"
+    - "*.kts"
+    - "**/*.kts"
+
+runtime:
+  name: node
+  version: "22"
+  command:
+    - dist/index.js
+
+permissions:
+  enforcement: advisory
+  filesystem:
+    read:
+      - .
+    write: []
+  network: false
+  model: true
+  environment:
+    allow: []
+
+findings:
+  format: adversary.review.v1

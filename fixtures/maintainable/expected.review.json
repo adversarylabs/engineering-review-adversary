@@ -1,0 +1,105 @@
+{
+  "assessment": {
+    "risk": "low",
+    "summary": "Ready with minor improvements — The change is straightforward and validated, with one small source of policy drift worth consolidating."
+  },
+  "positives": [
+    {
+      "key": "engineering-review.strength.1",
+      "summary": "The service keeps storage behind a narrow dependency and propagates caller context.",
+      "evidence": [
+        {
+          "location": {
+            "file": "eligibility/service.go",
+            "line": 15
+          },
+          "message": "The Store boundary exposes only the account lookup the service needs.",
+          "snippet": "\ntype Store interface {\n\tAccount(context.Context, string) (Account, error)",
+          "data": {
+            "sourceId": "source:1",
+            "status": "changed"
+          }
+        }
+      ],
+      "metadata": {
+        "source": "model"
+      }
+    },
+    {
+      "key": "engineering-review.strength.2",
+      "summary": "The test checks that preview and execution currently agree on rejection behavior.",
+      "evidence": [
+        {
+          "location": {
+            "file": "eligibility/service_test.go",
+            "line": 17
+          },
+          "message": "One scenario exercises both public paths.",
+          "snippet": "\nfunc TestPreviewAndApplyAgree(t *testing.T) {\n\tservice := NewService(fakeStore{account: Account{Active: false, Country: \"us\"}})",
+          "data": {
+            "sourceId": "source:2",
+            "status": "changed"
+          }
+        }
+      ],
+      "metadata": {
+        "source": "model"
+      }
+    }
+  ],
+  "observations": [],
+  "findings": [
+    {
+      "id": "finding-86fc2a58",
+      "ruleId": "engineering-review.maintainability",
+      "groupKey": "engineering-review.eligibility-policy-duplication",
+      "title": "Duplicated eligibility policy",
+      "category": "maintainability",
+      "severity": "low",
+      "confidence": "high",
+      "summary": "Preview and Apply encode the same eligibility rule independently.",
+      "whyItMatters": "A business decision should have one authoritative implementation. A future policy change can make the preview disagree with the operation it predicts.",
+      "impact": "A future policy change can make the preview disagree with the operation it predicts.",
+      "evidence": [
+        {
+          "location": {
+            "file": "eligibility/service.go",
+            "line": 32
+          },
+          "message": "Preview evaluates active status and country inline.",
+          "snippet": "\t}\n\treturn account.Active && account.Country != \"blocked\", nil\n}"
+        },
+        {
+          "location": {
+            "file": "eligibility/service.go",
+            "line": 40
+          },
+          "message": "Apply repeats the inverse of the same policy.",
+          "snippet": "\t}\n\tif !account.Active || account.Country == \"blocked\" {\n\t\treturn ErrIneligible"
+        }
+      ],
+      "recommendation": "Extract the eligibility decision into one private function used by both paths. This adds a small indirection, but it removes a meaningful consistency hazard without introducing a new abstraction layer.",
+      "remediation": {
+        "complexity": "small"
+      },
+      "tags": [
+        "engineering-review",
+        "model-backed"
+      ],
+      "metadata": {
+        "source": "model",
+        "observationId": "eligibility-policy-duplication",
+        "principle": "A business decision should have one authoritative implementation.",
+        "tradeoffs": "This adds a small indirection, but it removes a meaningful consistency hazard without introducing a new abstraction layer."
+      }
+    }
+  ],
+  "opinion": {
+    "ship": true,
+    "summary": "I would merge this change as-is."
+  },
+  "suppressed": {
+    "observations": 0,
+    "findings": 0
+  }
+}

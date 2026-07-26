@@ -1,0 +1,7 @@
+{
+  "changedFiles": [
+    "src/job.rs",
+    "src/api.rs",
+    "tests/job_test.rs"
+  ]
+}

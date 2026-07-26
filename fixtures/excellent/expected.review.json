@@ -1,0 +1,84 @@
+{
+  "assessment": {
+    "risk": "none",
+    "summary": "Well engineered — The implementation is small, internally coherent, and validates the boundary cases introduced by the new behavior."
+  },
+  "positives": [
+    {
+      "key": "engineering-review.strength.1",
+      "summary": "The clock dependency makes refill behavior deterministic without leaking test concerns into the public API.",
+      "evidence": [
+        {
+          "location": {
+            "file": "src/token-bucket.ts",
+            "line": 10
+          },
+          "message": "Time is supplied through a narrow Clock boundary.",
+          "snippet": "  constructor(\n    private readonly capacity: number,\n    private readonly refillPerSecond: number,",
+          "data": {
+            "sourceId": "source:1",
+            "status": "changed"
+          }
+        },
+        {
+          "location": {
+            "file": "test/token-bucket.test.ts",
+            "line": 6
+          },
+          "message": "Tests control time directly.",
+          "snippet": "test(\"refills without exceeding capacity\", () => {\n  let time = 0;\n  const bucket = new TokenBucket(2, 1, { now: () => time });",
+          "data": {
+            "sourceId": "source:2",
+            "status": "changed"
+          }
+        }
+      ],
+      "metadata": {
+        "source": "model"
+      }
+    },
+    {
+      "key": "engineering-review.strength.2",
+      "summary": "Input validation and capacity clamping keep the state transitions explicit and bounded.",
+      "evidence": [
+        {
+          "location": {
+            "file": "src/token-bucket.ts",
+            "line": 22
+          },
+          "message": "Invalid token requests are rejected before mutation.",
+          "snippet": "  take(count = 1): boolean {\n    if (!Number.isInteger(count) || count <= 0 || count > this.capacity) {\n      return false;",
+          "data": {
+            "sourceId": "source:1",
+            "status": "changed"
+          }
+        },
+        {
+          "location": {
+            "file": "src/token-bucket.ts",
+            "line": 33
+          },
+          "message": "Refills cannot exceed configured capacity.",
+          "snippet": "    const now = this.clock.now();\n    const elapsedSeconds = Math.max(0, now - this.lastRefill) / 1_000;\n    this.available = Math.min(",
+          "data": {
+            "sourceId": "source:1",
+            "status": "changed"
+          }
+        }
+      ],
+      "metadata": {
+        "source": "model"
+      }
+    }
+  ],
+  "observations": [],
+  "findings": [],
+  "opinion": {
+    "ship": true,
+    "summary": "I would merge this change as-is."
+  },
+  "suppressed": {
+    "observations": 0,
+    "findings": 0
+  }
+}

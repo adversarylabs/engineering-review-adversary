@@ -1,0 +1,128 @@
+{
+  "assessment": {
+    "risk": "high",
+    "summary": "Incomplete implementation — The new Paused state can be entered but is not integrated into the public state representation or any path that can leave it."
+  },
+  "positives": [
+    {
+      "key": "engineering-review.strength.1",
+      "summary": "The transition rejects invalid source states before mutation.",
+      "evidence": [
+        {
+          "location": {
+            "file": "src/job.rs",
+            "line": 14
+          },
+          "message": "pause guards the Running precondition.",
+          "snippet": "pub fn pause(state: &mut JobState) -> Result<(), &'static str> {\n    if *state != JobState::Running {\n        return Err(\"only running jobs can be paused\");",
+          "data": {
+            "sourceId": "source:1",
+            "status": "changed"
+          }
+        }
+      ],
+      "metadata": {
+        "source": "model"
+      }
+    }
+  ],
+  "observations": [],
+  "findings": [
+    {
+      "id": "finding-20b09752",
+      "ruleId": "engineering-review.completeness",
+      "groupKey": "engineering-review.paused-lifecycle-incomplete",
+      "title": "Incomplete paused-state lifecycle",
+      "category": "completeness",
+      "severity": "high",
+      "confidence": "high",
+      "summary": "Jobs can enter Paused, but the API reports that state as unknown and resumable never recognizes it.",
+      "whyItMatters": "A new domain state must be handled across every boundary and supported transition. A successful pause leaves callers with a state the public API cannot represent or recover from.",
+      "impact": "A successful pause leaves callers with a state the public API cannot represent or recover from.",
+      "evidence": [
+        {
+          "location": {
+            "file": "src/api.rs",
+            "line": 8
+          },
+          "message": "The API falls through to unknown for the new state.",
+          "snippet": "        JobState::Complete => \"complete\",\n        _ => \"unknown\",\n    }"
+        },
+        {
+          "location": {
+            "file": "src/api.rs",
+            "line": 13
+          },
+          "message": "The resumable decision is hard-coded false for every state.",
+          "snippet": "pub fn resumable(state: &JobState) -> bool {\n    false\n}"
+        },
+        {
+          "location": {
+            "file": "src/job.rs",
+            "line": 17
+          },
+          "message": "The pause operation transitions a running job into Paused.",
+          "snippet": "    }\n    *state = JobState::Paused;\n    Ok(())"
+        }
+      ],
+      "recommendation": "Define the intended paused lifecycle, map Paused explicitly at the API boundary, implement its supported transition, and validate the round trip. If resume is intentionally deferred, reject pause in this release or expose the limitation explicitly instead of creating a terminal state accidentally.",
+      "remediation": {
+        "complexity": "large"
+      },
+      "tags": [
+        "engineering-review",
+        "model-backed"
+      ],
+      "metadata": {
+        "source": "model",
+        "observationId": "paused-lifecycle-incomplete",
+        "principle": "A new domain state must be handled across every boundary and supported transition.",
+        "tradeoffs": "If resume is intentionally deferred, reject pause in this release or expose the limitation explicitly instead of creating a terminal state accidentally."
+      }
+    },
+    {
+      "id": "finding-8bbc700a",
+      "ruleId": "engineering-review.validation",
+      "groupKey": "engineering-review.paused-validation-incomplete",
+      "title": "Missing paused-state boundary validation",
+      "category": "validation",
+      "severity": "medium",
+      "confidence": "high",
+      "summary": "The test proves that pause mutates the enum but does not exercise how the new state is presented or recovered.",
+      "whyItMatters": "Validation should cover the externally observable behavior and the risky state transition, not only the local assignment. The incomplete API integration can pass while the local transition test remains green.",
+      "impact": "The incomplete API integration can pass while the local transition test remains green.",
+      "evidence": [
+        {
+          "location": {
+            "file": "tests/job_test.rs",
+            "line": 4
+          },
+          "message": "The only test ends after checking the internal enum value.",
+          "snippet": "#[test]\nfn running_job_can_pause() {\n    let mut state = JobState::Running;"
+        }
+      ],
+      "recommendation": "Add a scenario that pauses a running job and verifies the public state plus the intended next transition. One lifecycle-level scenario is more valuable here than exhaustive unit cases for each match arm.",
+      "remediation": {
+        "complexity": "medium"
+      },
+      "tags": [
+        "engineering-review",
+        "model-backed"
+      ],
+      "metadata": {
+        "source": "model",
+        "observationId": "paused-validation-incomplete",
+        "principle": "Validation should cover the externally observable behavior and the risky state transition, not only the local assignment.",
+        "tradeoffs": "One lifecycle-level scenario is more valuable here than exhaustive unit cases for each match arm."
+      }
+    }
+  ],
+  "opinion": {
+    "ship": false,
+    "summary": "I would address the incomplete paused-state lifecycle before merging."
+  },
+  "suppressed": {
+    "observations": 0,
+    "findings": 0
+  }
+}
