@@ -1,8 +1,14 @@
 {
   "name": "engineering-review",
   "version": "0.0.1",
+  "description": "Staff-level, language-agnostic engineering review adversary.",
   "type": "module",
   "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/adversarylabs/engineering-review-adversary.git"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json --noEmit && node scripts/build.mjs",
     "prepare": "npm run build",
