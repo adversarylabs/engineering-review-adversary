@@ -16,8 +16,7 @@
           "message": "Callers can provide values without coupling evaluation to an environment API.",
           "snippet": "\nclass ValueSource(Protocol):\n    def value(self, key: str) -> str | None: ...",
           "data": {
-            "sourceId": "source:1",
-            "status": "changed"
+            "citationId": "repo:read:1"
           }
         }
       ],

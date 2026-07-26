@@ -3,7 +3,6 @@
 import { realpath } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { Adversary } from "@adversarylabs/sdk";
-import { discoverSources } from "./discover.js";
 import { reviewEngineeringChange } from "./review.js";
 
 export function createApp(): Adversary {
@@ -17,9 +16,7 @@ export function createApp(): Adversary {
   });
 
   app.rule("engineering-review.review", async (ctx) => {
-    const discovery = await discoverSources(ctx);
-    ctx.summary.files_scanned = discovery.sources.length;
-    await reviewEngineeringChange(ctx, discovery);
+    await reviewEngineeringChange(ctx);
   });
 
   return app;

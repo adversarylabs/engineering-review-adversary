@@ -109,24 +109,20 @@
               "type": "object",
               "additionalProperties": false,
               "properties": {
-                "sourceId": {
-                  "description": "An exact source ID or source path from the prepared input.",
+                "citationId": {
+                  "description": "An exact citation ID from a prepared read_file result.",
                   "type": "string"
                 },
                 "line": {
-                  "description": "Best estimate of the 1-based source line; the exact quote anchors the final location.",
+                  "description": "A 1-based line within the citation's inclusive startLine and endLine range.",
                   "type": "integer"
                 },
                 "detail": {
                   "description": "How this citation supports the observation.",
                   "type": "string"
-                },
-                "quote": {
-                  "description": "Short exact text copied from the cited source.",
-                  "type": "string"
                 }
               },
-              "required": ["sourceId", "line", "detail", "quote"]
+              "required": ["citationId", "line", "detail"]
             }
           }
         },
@@ -163,24 +159,20 @@
               "type": "object",
               "additionalProperties": false,
               "properties": {
-                "sourceId": {
-                  "description": "An exact source ID or source path from the prepared input.",
+                "citationId": {
+                  "description": "An exact citation ID from a prepared read_file result.",
                   "type": "string"
                 },
                 "line": {
-                  "description": "Best estimate of the 1-based source line; the exact quote anchors the final location.",
+                  "description": "A 1-based line within the citation's inclusive startLine and endLine range.",
                   "type": "integer"
                 },
                 "detail": {
                   "description": "How this citation supports the strength.",
                   "type": "string"
-                },
-                "quote": {
-                  "description": "Short exact text copied from the cited source.",
-                  "type": "string"
                 }
               },
-              "required": ["sourceId", "line", "detail", "quote"]
+              "required": ["citationId", "line", "detail"]
             }
           }
         },

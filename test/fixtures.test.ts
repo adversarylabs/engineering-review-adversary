@@ -6,6 +6,7 @@ import test from "node:test";
 import type { ModelReviewRequest, ReviewModel, ReviewResult } from "@adversarylabs/sdk";
 import { createApp } from "../src/index.ts";
 import type { EngineeringReviewOutput } from "../src/types.ts";
+import { repositoryReviewModel } from "./repository-model.ts";
 
 const projectRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const fixturesRoot = join(projectRoot, "fixtures");
@@ -37,19 +38,23 @@ for (const fixtureName of fixtureNames) {
     const modelOutput = JSON.parse(
       await readFile(join(root, "expected.model.json"), "utf8"),
     ) as EngineeringReviewOutput;
-    let calls = 0;
-    const model: ReviewModel = {
-      async review<T>(request: ModelReviewRequest) {
-        calls += 1;
+    let finalCalls = 0;
+    const model: ReviewModel = repositoryReviewModel(
+      fixture.changedFiles,
+      async <T>(request: ModelReviewRequest) => {
+        finalCalls += 1;
         assert.match(request.prompt, /experienced software engineer approve/);
-        assert.equal((request.input as { sources: unknown[] }).sources.length > 0, true);
+        const repository = (request.input as {
+          repository: { toolResults: unknown[] };
+        }).repository;
+        assert.equal(repository.toolResults.length > 0, true);
         return {
           output: modelOutput as T,
           provider: "fixture",
           model: fixtureName,
         };
       },
-    };
+    );
 
     const result = await createApp().run({
       input: {
@@ -64,7 +69,7 @@ for (const fixtureName of fixtureNames) {
       },
       model,
     });
-    assert.equal(calls, 1, "fixture concerns must already be valid noun phrases");
+    assert.equal(finalCalls, 1, "fixture concerns must already be valid noun phrases");
 
     const actual = snapshot(result);
     const expectedPath = join(root, "expected.review.json");

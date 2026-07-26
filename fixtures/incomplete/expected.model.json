@@ -21,22 +21,19 @@
       "tradeoffs": "If resume is intentionally deferred, reject pause in this release or expose the limitation explicitly instead of creating a terminal state accidentally.",
       "evidence": [
         {
-          "sourceId": "source:1",
           "line": 17,
-        "detail": "The pause operation transitions a running job into Paused.",
-        "quote": "*state = JobState::Paused;"
+          "detail": "The pause operation transitions a running job into Paused.",
+          "citationId": "repo:read:1"
         },
         {
-          "sourceId": "source:2",
           "line": 8,
-        "detail": "The API falls through to unknown for the new state.",
-        "quote": "_ => \"unknown\","
+          "detail": "The API falls through to unknown for the new state.",
+          "citationId": "repo:read:2"
         },
         {
-          "sourceId": "source:2",
           "line": 13,
-        "detail": "The resumable decision is hard-coded false for every state.",
-        "quote": "false"
+          "detail": "The resumable decision is hard-coded false for every state.",
+          "citationId": "repo:read:2"
         }
       ]
     },
@@ -53,10 +50,9 @@
       "tradeoffs": "One lifecycle-level scenario is more valuable here than exhaustive unit cases for each match arm.",
       "evidence": [
         {
-          "sourceId": "source:3",
           "line": 4,
-        "detail": "The only test ends after checking the internal enum value.",
-        "quote": "fn running_job_can_pause() {"
+          "detail": "The only test ends after checking the internal enum value.",
+          "citationId": "repo:read:3"
         }
       ]
     }
@@ -66,10 +62,9 @@
       "summary": "The transition rejects invalid source states before mutation.",
       "evidence": [
         {
-          "sourceId": "source:1",
           "line": 14,
-        "detail": "pause guards the Running precondition.",
-        "quote": "if *state != JobState::Running {"
+          "detail": "pause guards the Running precondition.",
+          "citationId": "repo:read:1"
         }
       ]
     }

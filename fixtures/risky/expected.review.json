@@ -16,8 +16,7 @@
           "message": "The existing behavior is retained behind legacyQuote.",
           "snippet": "        }\n        return legacyQuote(order);\n    }",
           "data": {
-            "sourceId": "source:1",
-            "status": "changed"
+            "citationId": "repo:read:1"
           }
         }
       ],
