@@ -35,6 +35,8 @@ test("source detection includes supported languages and excludes generated depen
     "node_modules/pkg/index.ts",
     "vendor/example/main.go",
     "dist/app.js",
+    "fixtures/risky/src/main.rs",
+    "testdata/incomplete/main.go",
     "src/generated.g.cs",
   ]) {
     assert.equal(isReviewableSource(path), false, path);

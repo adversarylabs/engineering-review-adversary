@@ -5,7 +5,7 @@
   },
   "positives": [
     {
-      "key": "engineering-review.strength.The transition rejects invalid source states before mutation.",
+      "key": "engineering-review.strength.1",
       "summary": "The transition rejects invalid source states before mutation.",
       "evidence": [
         {

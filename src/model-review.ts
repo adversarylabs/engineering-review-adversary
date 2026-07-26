@@ -17,6 +17,11 @@ export interface PreparedModelInput {
     omitted: number;
     totalCharacters: number;
   };
+  platformContract: {
+    modelReviewOutput: string;
+    evidenceSnippets: string;
+    observationSynthesis: string;
+  };
   sources: Array<{
     id: string;
     path: string;
@@ -43,6 +48,14 @@ export function prepareModelInput(
       included: discovery.sources.length,
       omitted: discovery.omitted,
       totalCharacters: discovery.totalCharacters,
+    },
+    platformContract: {
+      modelReviewOutput:
+        "When a schema is supplied to ctx.model.review, the model broker validates the returned JSON against that schema before resolving.",
+      evidenceSnippets:
+        "Finding snippets are intentionally bounded previews, not complete source excerpts; the exact quote check establishes evidence integrity.",
+      observationSynthesis:
+        "Repeated ctx.observe calls with the same groupKey and deduplicate=true are intentionally synthesized by the SDK into one finding with multiple evidence locations.",
     },
     sources: discovery.sources.map(({ id, path, status, content, truncated }) => ({
       id,

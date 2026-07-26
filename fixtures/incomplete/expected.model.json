@@ -23,17 +23,20 @@
         {
           "sourceId": "source:1",
           "line": 17,
-          "detail": "The pause operation transitions a running job into Paused."
+        "detail": "The pause operation transitions a running job into Paused.",
+        "quote": "*state = JobState::Paused;"
         },
         {
           "sourceId": "source:2",
           "line": 8,
-          "detail": "The API falls through to unknown for the new state."
+        "detail": "The API falls through to unknown for the new state.",
+        "quote": "_ => \"unknown\","
         },
         {
           "sourceId": "source:2",
           "line": 13,
-          "detail": "The resumable decision is hard-coded false for every state."
+        "detail": "The resumable decision is hard-coded false for every state.",
+        "quote": "false"
         }
       ]
     },
@@ -52,7 +55,8 @@
         {
           "sourceId": "source:3",
           "line": 4,
-          "detail": "The only test ends after checking the internal enum value."
+        "detail": "The only test ends after checking the internal enum value.",
+        "quote": "fn running_job_can_pause() {"
         }
       ]
     }
@@ -64,7 +68,8 @@
         {
           "sourceId": "source:1",
           "line": 14,
-          "detail": "pause guards the Running precondition."
+        "detail": "pause guards the Running precondition.",
+        "quote": "if *state != JobState::Running {"
         }
       ]
     }

@@ -23,17 +23,20 @@
         {
           "sourceId": "source:1",
           "line": 4,
-          "detail": "The feature decision is a process-wide static value."
+        "detail": "The feature decision is a process-wide static value.",
+        "quote": "private static volatile boolean newPricing ="
         },
         {
           "sourceId": "source:1",
           "line": 8,
-          "detail": "Every quote takes the new path when the single flag is true."
+        "detail": "Every quote takes the new path when the single flag is true.",
+        "quote": "if (newPricing) {"
         },
         {
           "sourceId": "source:1",
           "line": 9,
-          "detail": "The new calculation has no failure containment or fallback."
+        "detail": "The new calculation has no failure containment or fallback.",
+        "quote": "return new PricingCalculator().calculate(order);"
         }
       ]
     },
@@ -52,12 +55,14 @@
         {
           "sourceId": "source:2",
           "line": 7,
-          "detail": "The only scenario asserts legacy subtotal behavior."
+        "detail": "The only scenario asserts legacy subtotal behavior.",
+        "quote": "void legacyQuoteUsesSubtotal() {"
         },
         {
           "sourceId": "source:1",
           "line": 7,
-          "detail": "quote now contains a runtime-selectable new branch."
+        "detail": "quote now contains a runtime-selectable new branch.",
+        "quote": "public BigDecimal quote(Order order) {"
         }
       ]
     }
@@ -69,7 +74,8 @@
         {
           "sourceId": "source:1",
           "line": 11,
-          "detail": "The existing behavior is retained behind legacyQuote."
+        "detail": "The existing behavior is retained behind legacyQuote.",
+        "quote": "return legacyQuote(order);"
         }
       ]
     }

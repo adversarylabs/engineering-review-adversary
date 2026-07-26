@@ -23,17 +23,20 @@
         {
           "sourceId": "source:1",
           "line": 8,
-          "detail": "A strategy protocol is introduced for one implementation."
+        "detail": "A strategy protocol is introduced for one implementation.",
+        "quote": "class FlagStrategy(Protocol):"
         },
         {
           "sourceId": "source:1",
           "line": 21,
-          "detail": "The factory selects only the boolean strategy."
+        "detail": "The factory selects only the boolean strategy.",
+        "quote": "class StrategyFactory:"
         },
         {
           "sourceId": "source:1",
           "line": 38,
-          "detail": "Every call constructs the entire abstraction chain."
+        "detail": "Every call constructs the entire abstraction chain.",
+        "quote": "def feature_enabled(source: ValueSource, key: str) -> bool:"
         }
       ]
     }
@@ -45,7 +48,8 @@
         {
           "sourceId": "source:1",
           "line": 5,
-          "detail": "Callers can provide values without coupling evaluation to an environment API."
+        "detail": "Callers can provide values without coupling evaluation to an environment API.",
+        "quote": "class ValueSource(Protocol):"
         }
       ]
     }

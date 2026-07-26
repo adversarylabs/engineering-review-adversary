@@ -5,7 +5,7 @@
   },
   "positives": [
     {
-      "key": "engineering-review.strength.External value access is separated behind a small source interface.",
+      "key": "engineering-review.strength.1",
       "summary": "External value access is separated behind a small source interface.",
       "evidence": [
         {
@@ -43,10 +43,10 @@
         {
           "location": {
             "file": "src/feature_flags.py",
-            "line": 8
+            "line": 9
           },
           "message": "A strategy protocol is introduced for one implementation.",
-          "snippet": "\n\nclass FlagStrategy(Protocol):"
+          "snippet": "\nclass FlagStrategy(Protocol):\n    def evaluate(self, raw: str | None) -> bool: ..."
         },
         {
           "location": {

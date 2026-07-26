@@ -41,10 +41,14 @@ const ignoredSegments = new Set([
   "build",
   "coverage",
   "dist",
+  "fixture",
+  "fixtures",
   "generated",
   "node_modules",
   "target",
+  "testdata",
   "vendor",
+  "__fixtures__",
 ]);
 
 function normalizePath(path: string): string {

@@ -3,14 +3,17 @@
   "additionalProperties": false,
   "properties": {
     "schemaVersion": {
+      "description": "Protocol version; always 1.",
       "type": "integer",
       "enum": [1]
     },
     "overall": {
+      "description": "The substantive overall engineering judgment.",
       "type": "object",
       "additionalProperties": false,
       "properties": {
         "verdict": {
+          "description": "The closest calibrated overall verdict.",
           "type": "string",
           "enum": [
             "well-engineered",
@@ -22,34 +25,42 @@
           ]
         },
         "risk": {
+          "description": "Highest current engineering risk supported by an observation.",
           "type": "string",
           "enum": ["none", "low", "medium", "high", "critical"]
         },
         "ship": {
+          "description": "Whether an experienced engineer should approve the implementation as-is.",
           "type": "boolean"
         },
         "summary": {
+          "description": "Concrete overall assessment grounded in the prepared source evidence; never a placeholder.",
           "type": "string"
         },
         "primaryConcern": {
+          "description": "Empty when ship is true; otherwise a short noun phrase naming the primary concern.",
           "type": "string"
         }
       },
       "required": ["verdict", "risk", "ship", "summary", "primaryConcern"]
     },
     "observations": {
+      "description": "Zero to four important, actionable engineering observations.",
       "type": "array",
       "items": {
         "type": "object",
         "additionalProperties": false,
         "properties": {
           "id": {
+            "description": "Stable short identifier within this response.",
             "type": "string"
           },
           "title": {
+            "description": "Concise engineering concern, not a sentence or placeholder.",
             "type": "string"
           },
           "category": {
+            "description": "Engineering Review authority category.",
             "type": "string",
             "enum": [
               "correctness",
@@ -62,45 +73,60 @@
             ]
           },
           "severity": {
+            "description": "Current impact if the concern remains.",
             "type": "string",
             "enum": ["low", "medium", "high", "critical"]
           },
           "confidence": {
+            "description": "How directly the cited evidence supports the conclusion.",
             "type": "string",
             "enum": ["medium", "high"]
           },
           "principle": {
+            "description": "Specific engineering principle involved.",
             "type": "string"
           },
           "summary": {
+            "description": "What the implementation does and why it is problematic.",
             "type": "string"
           },
           "impact": {
+            "description": "Concrete correctness, maintenance, architecture, or operational consequence.",
             "type": "string"
           },
           "recommendation": {
+            "description": "Specific actionable improvement; never 'no action needed'.",
             "type": "string"
           },
           "tradeoffs": {
+            "description": "Relevant cost or alternative, or an empty string when none.",
             "type": "string"
           },
           "evidence": {
+            "description": "Direct source citations that prove the observation.",
             "type": "array",
             "items": {
               "type": "object",
               "additionalProperties": false,
               "properties": {
                 "sourceId": {
+                  "description": "An exact source ID or source path from the prepared input.",
                   "type": "string"
                 },
                 "line": {
+                  "description": "Best estimate of the 1-based source line; the exact quote anchors the final location.",
                   "type": "integer"
                 },
                 "detail": {
+                  "description": "How this citation supports the observation.",
+                  "type": "string"
+                },
+                "quote": {
+                  "description": "Short exact text copied from the cited source.",
                   "type": "string"
                 }
               },
-              "required": ["sourceId", "line", "detail"]
+              "required": ["sourceId", "line", "detail", "quote"]
             }
           }
         },
@@ -120,31 +146,41 @@
       }
     },
     "strengths": {
+      "description": "Zero to three meaningful, evidence-backed strengths.",
       "type": "array",
       "items": {
         "type": "object",
         "additionalProperties": false,
         "properties": {
           "summary": {
+            "description": "Concrete strength demonstrated by prepared evidence.",
             "type": "string"
           },
           "evidence": {
+            "description": "Direct source citations supporting the strength.",
             "type": "array",
             "items": {
               "type": "object",
               "additionalProperties": false,
               "properties": {
                 "sourceId": {
+                  "description": "An exact source ID or source path from the prepared input.",
                   "type": "string"
                 },
                 "line": {
+                  "description": "Best estimate of the 1-based source line; the exact quote anchors the final location.",
                   "type": "integer"
                 },
                 "detail": {
+                  "description": "How this citation supports the strength.",
+                  "type": "string"
+                },
+                "quote": {
+                  "description": "Short exact text copied from the cited source.",
                   "type": "string"
                 }
               },
-              "required": ["sourceId", "line", "detail"]
+              "required": ["sourceId", "line", "detail", "quote"]
             }
           }
         },

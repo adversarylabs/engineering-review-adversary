@@ -5,7 +5,7 @@
   },
   "positives": [
     {
-      "key": "engineering-review.strength.The legacy calculation remains available as an explicit implementation path.",
+      "key": "engineering-review.strength.1",
       "summary": "The legacy calculation remains available as an explicit implementation path.",
       "evidence": [
         {

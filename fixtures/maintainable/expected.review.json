@@ -5,7 +5,7 @@
   },
   "positives": [
     {
-      "key": "engineering-review.strength.The service keeps storage behind a narrow dependency and propagates caller context.",
+      "key": "engineering-review.strength.1",
       "summary": "The service keeps storage behind a narrow dependency and propagates caller context.",
       "evidence": [
         {
@@ -26,7 +26,7 @@
       }
     },
     {
-      "key": "engineering-review.strength.The test checks that preview and execution currently agree on rejection behavior.",
+      "key": "engineering-review.strength.2",
       "summary": "The test checks that preview and execution currently agree on rejection behavior.",
       "evidence": [
         {

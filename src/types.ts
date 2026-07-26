@@ -32,6 +32,7 @@ export interface ModelEvidence {
   sourceId: string;
   line: number;
   detail: string;
+  quote: string;
 }
 
 export interface ModelObservation {

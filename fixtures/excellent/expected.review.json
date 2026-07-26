@@ -5,40 +5,7 @@
   },
   "positives": [
     {
-      "key": "engineering-review.strength.Input validation and capacity clamping keep the state transitions explicit and bounded.",
-      "summary": "Input validation and capacity clamping keep the state transitions explicit and bounded.",
-      "evidence": [
-        {
-          "location": {
-            "file": "src/token-bucket.ts",
-            "line": 20
-          },
-          "message": "Invalid token requests are rejected before mutation.",
-          "snippet": "  }\n\n  take(count = 1): boolean {",
-          "data": {
-            "sourceId": "source:1",
-            "status": "changed"
-          }
-        },
-        {
-          "location": {
-            "file": "src/token-bucket.ts",
-            "line": 33
-          },
-          "message": "Refills cannot exceed configured capacity.",
-          "snippet": "    const now = this.clock.now();\n    const elapsedSeconds = Math.max(0, now - this.lastRefill) / 1_000;\n    this.available = Math.min(",
-          "data": {
-            "sourceId": "source:1",
-            "status": "changed"
-          }
-        }
-      ],
-      "metadata": {
-        "source": "model"
-      }
-    },
-    {
-      "key": "engineering-review.strength.The clock dependency makes refill behavior deterministic without leaking test concerns into the public API.",
+      "key": "engineering-review.strength.1",
       "summary": "The clock dependency makes refill behavior deterministic without leaking test concerns into the public API.",
       "evidence": [
         {
@@ -62,6 +29,39 @@
           "snippet": "test(\"refills without exceeding capacity\", () => {\n  let time = 0;\n  const bucket = new TokenBucket(2, 1, { now: () => time });",
           "data": {
             "sourceId": "source:2",
+            "status": "changed"
+          }
+        }
+      ],
+      "metadata": {
+        "source": "model"
+      }
+    },
+    {
+      "key": "engineering-review.strength.2",
+      "summary": "Input validation and capacity clamping keep the state transitions explicit and bounded.",
+      "evidence": [
+        {
+          "location": {
+            "file": "src/token-bucket.ts",
+            "line": 22
+          },
+          "message": "Invalid token requests are rejected before mutation.",
+          "snippet": "  take(count = 1): boolean {\n    if (!Number.isInteger(count) || count <= 0 || count > this.capacity) {\n      return false;",
+          "data": {
+            "sourceId": "source:1",
+            "status": "changed"
+          }
+        },
+        {
+          "location": {
+            "file": "src/token-bucket.ts",
+            "line": 33
+          },
+          "message": "Refills cannot exceed configured capacity.",
+          "snippet": "    const now = this.clock.now();\n    const elapsedSeconds = Math.max(0, now - this.lastRefill) / 1_000;\n    this.available = Math.min(",
+          "data": {
+            "sourceId": "source:1",
             "status": "changed"
           }
         }

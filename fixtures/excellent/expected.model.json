@@ -15,12 +15,14 @@
         {
           "sourceId": "source:1",
           "line": 10,
-          "detail": "Time is supplied through a narrow Clock boundary."
+        "detail": "Time is supplied through a narrow Clock boundary.",
+        "quote": "private readonly capacity: number,"
         },
         {
           "sourceId": "source:2",
           "line": 6,
-          "detail": "Tests control time directly."
+        "detail": "Tests control time directly.",
+        "quote": "let time = 0;"
         }
       ]
     },
@@ -30,12 +32,14 @@
         {
           "sourceId": "source:1",
           "line": 20,
-          "detail": "Invalid token requests are rejected before mutation."
+        "detail": "Invalid token requests are rejected before mutation.",
+        "quote": "if (!Number.isInteger(count) || count <= 0 || count > this.capacity) {"
         },
         {
           "sourceId": "source:1",
           "line": 33,
-          "detail": "Refills cannot exceed configured capacity."
+        "detail": "Refills cannot exceed configured capacity.",
+        "quote": "const elapsedSeconds = Math.max(0, now - this.lastRefill) / 1_000;"
         }
       ]
     }

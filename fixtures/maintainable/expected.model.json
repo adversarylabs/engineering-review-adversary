@@ -23,12 +23,14 @@
         {
           "sourceId": "source:1",
           "line": 32,
-          "detail": "Preview evaluates active status and country inline."
+        "detail": "Preview evaluates active status and country inline.",
+        "quote": "return account.Active && account.Country != \"blocked\", nil"
         },
         {
           "sourceId": "source:1",
           "line": 40,
-          "detail": "Apply repeats the inverse of the same policy."
+        "detail": "Apply repeats the inverse of the same policy.",
+        "quote": "if !account.Active || account.Country == \"blocked\" {"
         }
       ]
     }
@@ -40,7 +42,8 @@
         {
           "sourceId": "source:1",
           "line": 15,
-          "detail": "The Store boundary exposes only the account lookup the service needs."
+        "detail": "The Store boundary exposes only the account lookup the service needs.",
+        "quote": "type Store interface {"
         }
       ]
     },
@@ -50,7 +53,8 @@
         {
           "sourceId": "source:2",
           "line": 17,
-          "detail": "One scenario exercises both public paths."
+        "detail": "One scenario exercises both public paths.",
+        "quote": "func TestPreviewAndApplyAgree(t *testing.T) {"
         }
       ]
     }
