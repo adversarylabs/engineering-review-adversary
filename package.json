@@ -1,6 +1,6 @@
 {
   "name": "engineering-review",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Staff-level, language-agnostic engineering review adversary.",
   "type": "module",
   "private": true,

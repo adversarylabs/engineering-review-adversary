@@ -6,6 +6,7 @@ It evaluates engineering quality across languages. Its authority is:
 
 - correctness and internal consistency;
 - completeness across related code paths, callers, compatibility, and obvious validation needs;
+- incomplete remediation: aligning a weak path with a stronger sibling without finishing the shared contract (including defensive nil-context / cancellation-token coercion that undoes the point of threading lifecycle control);
 - maintainability, responsibility boundaries, useful abstraction, and future evolution;
 - readability of intent, naming, control flow, and localized complexity;
 - architectural fit, dependency direction, boundaries, and coupling;
