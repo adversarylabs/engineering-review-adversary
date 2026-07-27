@@ -57,7 +57,7 @@ test("repository tools retrieve selected evidence instead of eager source bodies
           type: "diff",
           base_ref: "base",
           head_ref: "head",
-          scan_mode: "changed",
+          scan_mode: "all",
           changed_files: ["src/changed.ts"],
         },
       },
@@ -68,6 +68,45 @@ test("repository tools retrieve selected evidence instead of eager source bodies
     assert.match(encoded, /export const selected = true/);
     assert.doesNotMatch(encoded, /eagerValue/);
     assert.doesNotMatch(encoded, /not reviewable/);
+    assert.equal(
+      result.target.filesScanned,
+      36,
+      "files scanned counts every reviewable source in all-files scope, not only model reads",
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("changed scope counts unique reviewable changed files", async () => {
+  const root = await mkdtemp(join(tmpdir(), "engineering-review-changed-count-"));
+  try {
+    await writeFile(join(root, "changed.ts"), "export const selected = true;\n");
+    await writeFile(join(root, "context.ts"), "export const context = true;\n");
+    await writeFile(join(root, "README.md"), "# Not a source file\n");
+    const model = repositoryReviewModel(
+      ["changed.ts"],
+      async <T>() => ({
+        output: cleanReview as T,
+        provider: "fixture",
+        model: "fixture",
+      }),
+    );
+
+    const result = await createApp().run({
+      input: {
+        source: { path: root },
+        change: {
+          type: "diff",
+          base_ref: "base",
+          head_ref: "head",
+          scan_mode: "changed",
+          changed_files: ["changed.ts", "changed.ts", "README.md"],
+        },
+      },
+      model,
+    });
+
     assert.equal(result.target.filesScanned, 1);
   } finally {
     await rm(root, { recursive: true, force: true });

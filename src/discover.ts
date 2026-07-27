@@ -1,3 +1,5 @@
+import type { RuleContext } from "@adversarylabs/sdk";
+
 export const SOURCE_PATTERNS = [
   "*.go",
   "**/*.go",
@@ -61,4 +63,23 @@ export function isReviewableSource(path: string): boolean {
     const suffix = pattern.startsWith("**/*") ? pattern.slice(4) : pattern.slice(1);
     return normalized.endsWith(suffix);
   });
+}
+
+export async function countReviewableSources(ctx: RuleContext): Promise<number> {
+  if (ctx.change?.scanMode === "changed") {
+    return new Set(
+      ctx.change.changedFiles
+        .map(normalizePath)
+        .filter(isReviewableSource),
+    ).size;
+  }
+
+  const matches = (
+    await Promise.all(SOURCE_PATTERNS.map((pattern) => ctx.rglob(pattern)))
+  ).flat();
+  return new Set(
+    matches
+      .map(normalizePath)
+      .filter(isReviewableSource),
+  ).size;
 }
