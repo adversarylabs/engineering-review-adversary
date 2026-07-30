@@ -1,4 +1,4 @@
-name: engineering-review
+name: review/engineering
 version: 0.0.6
 description: Reviews proposed changes with Staff-level engineering judgment across languages.
 
