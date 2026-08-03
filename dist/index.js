@@ -14489,7 +14489,7 @@ import { fileURLToPath } from "node:url";
 
 // node_modules/@adversarylabs/sdk/dist/index.js
 var import__2 = __toESM(require__(), 1);
-import { mkdir, readFile, readdir as readdir2, writeFile } from "node:fs/promises";
+import { mkdir, readFile as readFile3, readdir as readdir3, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute as isAbsolute2, relative as relative2, resolve as resolve2 } from "node:path";
 
 // node_modules/@adversarylabs/sdk/dist/model.js
@@ -14784,11 +14784,121 @@ function validateModelOutput(schema, output) {
   }
 }
 
+// node_modules/@adversarylabs/sdk/dist/repo-index.js
+import { open, readFile } from "node:fs/promises";
+import { join } from "node:path";
+import { createInterface } from "node:readline";
+var ADVERSARY_REPO_INDEX_ENV = "ADVERSARY_REPO_INDEX";
+var REPO_INDEX_SCHEMA_VERSION = "v1";
+var RepoIndexUnavailableError = class extends Error {
+  code = "repo_index_unavailable";
+  constructor(message) {
+    super(message);
+    this.name = "RepoIndexUnavailableError";
+  }
+};
+async function openRepoIndex(dir) {
+  const metaRaw = await readFile(join(dir, "meta.json"), "utf8");
+  const meta = JSON.parse(metaRaw);
+  if (meta.schemaVersion !== REPO_INDEX_SCHEMA_VERSION) {
+    throw new RepoIndexUnavailableError(`unsupported repo-index schema ${meta.schemaVersion} (want ${REPO_INDEX_SCHEMA_VERSION})`);
+  }
+  const files = await readJsonl(join(dir, "files.jsonl"));
+  const edges = await readJsonl(join(dir, "edges.jsonl"));
+  return new MemoryRepoIndex(dir, meta, files, edges);
+}
+async function repoIndexFromEnvironment(env = process.env) {
+  const dir = env[ADVERSARY_REPO_INDEX_ENV]?.trim();
+  if (!dir) {
+    return null;
+  }
+  try {
+    return await openRepoIndex(dir);
+  } catch {
+    return null;
+  }
+}
+var MemoryRepoIndex = class {
+  dir;
+  meta;
+  files;
+  edges;
+  constructor(dir, meta, files, edges) {
+    this.dir = dir;
+    this.meta = meta;
+    this.files = files;
+    this.edges = edges;
+  }
+  async listFiles(options = {}) {
+    const limit = options.limit && options.limit > 0 ? options.limit : 5e3;
+    const language = options.language?.trim();
+    const out = [];
+    for (const file of this.files) {
+      if (language && file.language !== language) {
+        continue;
+      }
+      out.push(file);
+      if (out.length >= limit) {
+        break;
+      }
+    }
+    return out;
+  }
+  async file(path) {
+    const normalized = normalizePath(path);
+    return this.files.find((file) => file.path === normalized);
+  }
+  async importsOf(path) {
+    const normalized = normalizePath(path);
+    return this.edges.filter((edge) => edge.from === normalized && edge.kind === "import");
+  }
+  async importersOf(path) {
+    const normalized = normalizePath(path);
+    const dir = dirOf(normalized);
+    return this.edges.filter((edge) => {
+      if (edge.kind !== "import") {
+        return false;
+      }
+      return edge.to === normalized || edge.to === dir;
+    });
+  }
+};
+function normalizePath(path) {
+  return path.replaceAll("\\", "/").replace(/^\.\//, "");
+}
+function dirOf(path) {
+  const idx = path.lastIndexOf("/");
+  if (idx <= 0) {
+    return "";
+  }
+  return path.slice(0, idx);
+}
+async function readJsonl(path) {
+  const handle = await open(path, "r");
+  try {
+    const rl = createInterface({
+      input: handle.createReadStream(),
+      crlfDelay: Number.POSITIVE_INFINITY
+    });
+    const out = [];
+    for await (const line of rl) {
+      const trimmed = line.trim();
+      if (!trimmed) {
+        continue;
+      }
+      out.push(JSON.parse(trimmed));
+    }
+    return out;
+  } finally {
+    await handle.close();
+  }
+}
+
 // node_modules/@adversarylabs/sdk/dist/repository-model.js
 import { createReadStream } from "node:fs";
 import { lstat, readdir, realpath } from "node:fs/promises";
 import { isAbsolute, relative, resolve, sep } from "node:path";
-import { createInterface } from "node:readline";
+import { createInterface as createInterface2 } from "node:readline";
 var DEFAULT_MAX_ROUNDS = 6;
 var MAX_MAX_ROUNDS = 12;
 var DEFAULT_MAX_TOOL_CALLS = 24;
@@ -15147,7 +15257,7 @@ async function executeReadFile(root, operation, budget, include, exclude, citati
     throw new Error("read_file path is outside the configured repository file set");
   }
   const stream = createReadStream(absolute, { encoding: "utf8" });
-  const lines = createInterface({ input: stream, crlfDelay: Number.POSITIVE_INFINITY });
+  const lines = createInterface2({ input: stream, crlfDelay: Number.POSITIVE_INFINITY });
   const selected = [];
   let lineNumber = 0;
   let bytes = 0;
@@ -15248,6 +15358,111 @@ function addUsage(total, next) {
     ...total.inputTokens === void 0 && next.inputTokens === void 0 ? {} : { inputTokens: (total.inputTokens ?? 0) + (next.inputTokens ?? 0) },
     ...total.outputTokens === void 0 && next.outputTokens === void 0 ? {} : { outputTokens: (total.outputTokens ?? 0) + (next.outputTokens ?? 0) }
   };
+}
+
+// node_modules/@adversarylabs/sdk/dist/sources.js
+import { readFile as readFile2, readdir as readdir2 } from "node:fs/promises";
+import { join as join2 } from "node:path";
+var DEFAULT_IGNORE_DIRECTORIES = Object.freeze([
+  ".git",
+  ".next",
+  "build",
+  "coverage",
+  "dist",
+  "generated",
+  "node_modules",
+  "third_party",
+  "vendor"
+]);
+async function listInScopePaths(repoPath, change, options = {}) {
+  const include = options.include ?? (() => true);
+  const limit = options.limit !== void 0 && options.limit > 0 ? options.limit : void 0;
+  const ignore = new Set(options.ignoreDirectories ?? DEFAULT_IGNORE_DIRECTORIES);
+  let candidates;
+  if (change !== null && change.scanMode === "changed") {
+    candidates = change.changedFiles.map(normalizePath2);
+  } else {
+    candidates = await walkRelative(repoPath, ignore);
+  }
+  const out = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const path of candidates) {
+    if (!path || seen.has(path))
+      continue;
+    if (path.split("/").some((segment) => ignore.has(segment)))
+      continue;
+    if (!include(path))
+      continue;
+    seen.add(path);
+    out.push(path);
+    if (limit !== void 0 && out.length >= limit)
+      break;
+  }
+  return out;
+}
+async function loadInScopeSources(repoPath, change, options = {}) {
+  const maxBytes = options.maxBytes ?? 75e4;
+  const paths = await listInScopePaths(repoPath, change, {
+    include: options.include,
+    limit: options.limit ?? 750,
+    ignoreDirectories: options.ignoreDirectories
+  });
+  const wholeTarget = change === null || change.scanMode === "all";
+  const changedSet = new Set((change?.changedFiles ?? []).map(normalizePath2));
+  const sources = [];
+  for (const path of paths) {
+    const content = await safeReadText(join2(repoPath, path), maxBytes);
+    if (content === void 0)
+      continue;
+    sources.push({
+      path,
+      content,
+      status: wholeTarget && !changedSet.has(path) ? "repository" : "changed"
+    });
+  }
+  return sources;
+}
+function normalizePath2(path) {
+  return path.replaceAll("\\", "/").replace(/^\.\//, "");
+}
+async function walkRelative(repoPath, ignore) {
+  const out = [];
+  async function visit(relativeDir) {
+    const abs = relativeDir === "" ? repoPath : join2(repoPath, relativeDir);
+    let entries;
+    try {
+      entries = await readdir2(abs, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    entries.sort((left, right) => left.name.localeCompare(right.name));
+    for (const entry of entries) {
+      const rel = relativeDir === "" ? entry.name : `${relativeDir}/${entry.name}`.replaceAll("\\", "/");
+      if (entry.isDirectory()) {
+        if (ignore.has(entry.name))
+          continue;
+        await visit(rel);
+        continue;
+      }
+      if (entry.isFile()) {
+        out.push(rel.replaceAll("\\", "/"));
+      }
+    }
+  }
+  await visit("");
+  return out;
+}
+async function safeReadText(absPath, maxBytes) {
+  try {
+    const buffer = await readFile2(absPath);
+    if (buffer.byteLength > maxBytes)
+      return void 0;
+    if (buffer.includes(0))
+      return void 0;
+    return buffer.toString("utf8");
+  } catch {
+    return void 0;
+  }
 }
 
 // node_modules/@adversarylabs/sdk/dist/manifest.js
@@ -15413,7 +15628,8 @@ var Adversary = class {
     const collector = createReviewCollector();
     const registry = this.ruleDefinitions.snapshot();
     const change = normalizeChangeContext(options.input.change);
-    const context = createRuleContext(repoPath, change, summary, cache, collector, registry, options.model ?? unavailableModel());
+    const repoIndex = options.repoIndex !== void 0 ? options.repoIndex : await repoIndexFromEnvironment();
+    const context = createRuleContext(repoPath, change, summary, cache, collector, registry, options.model ?? unavailableModel(), repoIndex);
     const includeSuppressed = options.includeSuppressed;
     for (const rule of this.rules) {
       log.debug(`running rule ${rule.id}`);
@@ -15507,7 +15723,7 @@ function toWireEvidence(evidence) {
   });
 }
 async function parseInput(path = DEFAULT_INPUT_PATH) {
-  const raw = await readFile(path, "utf8");
+  const raw = await readFile3(path, "utf8");
   const parsed = JSON.parse(raw);
   if (!isRecord(parsed)) {
     throw new Error(`Invalid input at ${path}: expected an object.`);
@@ -15548,7 +15764,7 @@ async function writeOutput(output, path = DEFAULT_OUTPUT_PATH) {
 async function validateRunEnvelope(output) {
   let validator = envelopeValidator;
   if (validator === void 0) {
-    const schema = JSON.parse(await readFile(new URL("../schemas/adversary.review.v1.schema.json", import.meta.url), "utf8"));
+    const schema = JSON.parse(await readFile3(new URL("../schemas/adversary.review.v1.schema.json", import.meta.url), "utf8"));
     validator = new import__2.Ajv2020({ allErrors: true, strict: true }).compile(schema);
     envelopeValidator = validator;
   }
@@ -15605,11 +15821,12 @@ function normalizeChangeContext(change) {
     worktree: change.head_ref === WORKTREE_HEAD_REF
   });
 }
-function createRuleContext(repoPath, change, summary, cache, collector, registry, model) {
+function createRuleContext(repoPath, change, summary, cache, collector, registry, model, repoIndex) {
   const absoluteRepoPath = resolve2(repoPath);
   return {
     repoPath: absoluteRepoPath,
     change,
+    repoIndex,
     summary,
     cache,
     model: enhanceReviewModel(model, absoluteRepoPath),
@@ -15621,6 +15838,12 @@ function createRuleContext(repoPath, change, summary, cache, collector, registry
     },
     rglob(pattern) {
       return findMatchingPaths(absoluteRepoPath, pattern, true);
+    },
+    listInScopePaths(options) {
+      return listInScopePaths(absoluteRepoPath, change, options);
+    },
+    loadInScopeSources(options) {
+      return loadInScopeSources(absoluteRepoPath, change, options);
     },
     observe(observation) {
       assertObservationInit(observation, "ctx.observe", registry);
@@ -15667,11 +15890,11 @@ async function findMatchingPaths(repoPath, pattern, recursive) {
   }).sort(compareStrings);
 }
 async function listFiles(directory) {
-  const entries = await readdir2(directory, { withFileTypes: true });
+  const entries = await readdir3(directory, { withFileTypes: true });
   return entries.filter((entry) => entry.isFile()).map((entry) => resolve2(directory, entry.name));
 }
 async function walk(directory) {
-  const entries = await readdir2(directory, { withFileTypes: true });
+  const entries = await readdir3(directory, { withFileTypes: true });
   const paths = [];
   for (const entry of entries) {
     const path = resolve2(directory, entry.name);
@@ -16906,11 +17129,11 @@ var ignoredSegments = /* @__PURE__ */ new Set([
   "vendor",
   "__fixtures__"
 ]);
-function normalizePath(path) {
+function normalizePath3(path) {
   return path.replaceAll("\\", "/").replace(/^\.\/+/, "");
 }
 function isReviewableSource(path) {
-  const normalized = normalizePath(path);
+  const normalized = normalizePath3(path);
   const segments = normalized.split("/");
   if (segments.some((segment) => ignoredSegments.has(segment))) return false;
   if (normalized.endsWith(".min.js") || normalized.endsWith(".generated.ts") || normalized.endsWith(".g.cs")) {
@@ -16924,12 +17147,12 @@ function isReviewableSource(path) {
 async function countReviewableSources(ctx) {
   if (ctx.change?.scanMode === "changed") {
     return new Set(
-      ctx.change.changedFiles.map(normalizePath).filter(isReviewableSource)
+      ctx.change.changedFiles.map(normalizePath3).filter(isReviewableSource)
     ).size;
   }
   const matches = (await Promise.all(SOURCE_PATTERNS.map((pattern) => ctx.rglob(pattern)))).flat();
   return new Set(
-    matches.map(normalizePath).filter(isReviewableSource)
+    matches.map(normalizePath3).filter(isReviewableSource)
   ).size;
 }
 
