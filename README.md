@@ -36,7 +36,7 @@ Other official adversaries own adjacent classes so findings stay non-duplicative
 | Go concurrency / HTTP / DB / CLI / security / modules | the matching `go/*` domain adversaries |
 | CI and Dockerfile supply chain | `ci/*` and `container/dockerfile` |
 | Committed secrets | [`security/secrets`](https://github.com/adversarylabs/secrets-adversary) |
-| Adversary package authoring quality | [`meta/adversary`](https://github.com/adversarylabs/adversary-adversary) |
+| Adversary package authoring quality | [`adversarylabs/adversary`](https://github.com/adversarylabs/adversary-adversary) |
 
 ## Precision stance
 
