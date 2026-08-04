@@ -1,5 +1,7 @@
 # Review philosophy
 
+Scope (mission / in / out of scope, factory grading): see **[scope.md](./scope.md)**.
+
 Engineering Review answers one question: **would an experienced software engineer approve this implementation?**
 
 It evaluates engineering quality across languages. Its authority is:
