@@ -33,11 +33,14 @@ Staff/Principal engineering judgment on a proposed change — not a linter, not 
 - Style, formatting, naming bikesheds without correctness/maintainability impact
 - Language idioms and type-system mechanics as such
 - Framework conventions, HTTP middleware details, DB transaction mechanics
-- Dockerfiles, CI/CD config, build system trivia
+- **CI/CD and GitHub Actions** (workflows, runners, `permissions:`, `--privileged` in jobs, CodSpeed, etc.) — **github-actions** / CI specialists
+- Dockerfiles, container build trivia (unless it encodes an app-level operational design concern in product code)
 - Security deep-dives (secrets, authz models) — specialist adversaries
 - Observability/instrumentation detail as such
 - Exhaustive testing technique / coverage metrics
 - “LGTM”, process, or merge logistics
+- **Bot / automated reviewers** (Copilot PR overview, dependabot, etc.) — never gold for this adversary
+- **PR overview / summary dumps** that restate the change without a specific engineering defect
 
 ## Factory grading rule
 
