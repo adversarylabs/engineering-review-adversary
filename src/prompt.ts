@@ -18,6 +18,8 @@ Incomplete remediation (high priority when present in the diff):
 - Prefer requiring a real context (or token) at the API boundary over "if ctx == nil { ctx = context.Background() }" and language equivalents. Report this when it appears in changed code even if a pre-existing sibling still does it: the change is in the neighborhood of the contract and should not extend the smell.
 - Incomplete alignment also includes: matching surface shape of a reference helper without matching its behavioral guarantees; fixing headers/errors/cancellation on one HTTP path while leaving the twin half-done; adding context parameters without threading them through all call sites that now need them.
 
+- Exception scope hygiene (high priority for error-handling changes): when a try block (or language equivalent) encloses more statements than necessary, judge whether only the operations that can raise the caught exception belong inside it. Broad scopes that protect unrelated code can swallow errors from other statements, hide the real failure mode, and make the change harder to maintain and debug. Report this when the diff shows the broad pattern around changed code.
+
 Do not become a linter. Do not report language idioms, type-system mechanics, framework conventions, HTTP middleware details, database transaction mechanics, Dockerfiles, CI configuration, security, observability, or detailed testing technique. Those belong to specialist adversaries. Mention such an area only when the evidence establishes a broader engineering concern. Nil-context coercion is an engineering contract issue, not a style nit.
 
 Review behavior:

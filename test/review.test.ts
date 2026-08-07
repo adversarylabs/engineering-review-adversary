@@ -249,3 +249,92 @@ test("self-negating observations cannot veto approval", async () => {
   assert.equal(result.assessment?.risk, "none");
   assert.equal(result.opinion?.ship, true);
 });
+
+test("prompt guides model on narrow exception scopes (broad try-catch class)", async () => {
+  const root = await mkdtemp(join(tmpdir(), "engineering-review-try-scope-"));
+  await writeFile(join(root, "main.go"), "package main\n\nfunc process() {\n  try {\n    foo()\n    dest.append(x)\n    bar()\n  } catch (e error) {\n    // broad\n  }\n}\n");
+  const model: ReviewModel = repositoryReviewModel(
+    ["main.go"],
+    async <T>(request: ModelReviewRequest) => {
+      assert.match(request.prompt, /Exception scope hygiene/);
+      assert.match(request.prompt, /Broad scopes that protect unrelated code/);
+      assert.match(request.prompt, /only the operations that can raise the caught exception belong inside it/);
+      return {
+        output: {
+          schemaVersion: 1,
+          overall: {
+            verdict: "ready-with-minor-improvements",
+            risk: "low",
+            ship: true,
+            summary: "The implementation is mostly sound with one maintainability note on error handling.",
+            primaryConcern: "the overly broad exception scope",
+          },
+          observations: [{
+            id: "broad-try-scope",
+            title: "Overly broad try block",
+            category: "maintainability",
+            severity: "low",
+            confidence: "high",
+            principle: "Try blocks should be scoped only to the operations that can raise the caught exception.",
+            summary: "The try encloses unrelated statements.",
+            impact: "Unrelated errors can be swallowed and the failure mode is harder to diagnose.",
+            recommendation: "Wrap only the append (or equivalent) that can actually fail.",
+            tradeoffs: "Narrowing the scope makes the intent clearer without changing behavior.",
+            evidence: [{
+              citationId: "repo:read:1",
+              line: 5,
+              detail: "The try block covers foo, append, and bar.",
+            }],
+          }],
+          strengths: [],
+        } as T,
+        provider: "fixture",
+        model: "fixture",
+      };
+    },
+  );
+
+  const result = await createApp().run({
+    input: { source: { path: root } },
+    model,
+  });
+
+  assert.equal(result.findings.length, 1);
+  assert.match(result.findings[0]?.summary ?? "", /broad|scope|try|append|unrelated/i);
+});
+
+test("clean narrow try scope produces no observation for this class", async () => {
+  const root = await mkdtemp(join(tmpdir(), "engineering-review-narrow-try-"));
+  await writeFile(join(root, "main.go"), "package main\n\nfunc process() {\n  try {\n    dest.append(x)\n  } catch (e error) {\n    // narrow and correct\n  }\n  foo()\n  bar()\n}\n");
+  const model: ReviewModel = repositoryReviewModel(
+    ["main.go"],
+    async <T>(request: ModelReviewRequest) => {
+      // still contains the guidance but model returns no observation for this
+      assert.match(request.prompt, /Exception scope hygiene/);
+      return {
+        output: {
+          schemaVersion: 1,
+          overall: {
+            verdict: "well-engineered",
+            risk: "none",
+            ship: true,
+            summary: "The implementation is direct and well-scoped.",
+            primaryConcern: "",
+          },
+          observations: [],
+          strengths: [],
+        } as T,
+        provider: "fixture",
+        model: "fixture",
+      };
+    },
+  );
+
+  const result = await createApp().run({
+    input: { source: { path: root } },
+    model,
+  });
+
+  assert.deepEqual(result.findings, []);
+  assert.equal(result.opinion?.ship, true);
+});
