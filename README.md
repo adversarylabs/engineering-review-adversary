@@ -29,14 +29,19 @@ Highlights:
 
 ### Ownership boundaries
 
-Other official adversaries own adjacent classes so findings stay non-duplicative:
+**Scope (train / factory):** [`agent/scope.md`](agent/scope.md).
+
+Other packages own adjacent classes so findings stay non-duplicative:
 
 | Concern | Owned by |
 | --- | --- |
+| Pure style / nits / rename taste | `review/nits` |
+| Disproportionate complexity as the main story | `review/complexity` |
 | Go concurrency / HTTP / DB / CLI / security / modules | the matching `go/*` domain adversaries |
 | CI and Dockerfile supply chain | `ci/*` and `container/dockerfile` |
 | Committed secrets | [`security/secrets`](https://github.com/adversarylabs/secrets-adversary) |
 | Adversary package authoring quality | [`adversarylabs/adversary`](https://github.com/adversarylabs/adversary-adversary) |
+| Whole-diff maintainer persona | persona packages (e.g. torvalds) |
 
 ## Precision stance
 

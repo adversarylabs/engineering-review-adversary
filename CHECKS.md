@@ -65,8 +65,11 @@ The review also returns a single overall stance such as `well-engineered`, `read
 
 ## Out of scope (owned by specialists)
 
+Full contract: **[`agent/scope.md`](agent/scope.md)**.
 
-- Language idioms and type-system nits  
+- Pure style / nits / rename taste → `review/nits`
+- Disproportionate complexity as the only story → `review/complexity`
+- Language idioms and type-system nits → language / domain packs  
 - Framework middleware details as style  
 - Dockerfile / CI configuration (unless evidence shows a broader engineering contract issue)  
 - Security/secrets/CVE hunting (use domain adversaries)  
