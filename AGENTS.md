@@ -4,13 +4,18 @@
 
 This repository contains the language-agnostic Engineering Review adversary. It should behave like a Staff or Principal engineer reviewing a proposed change, not like a linter or a language specialist.
 
+## Scope
+
+- **`agent/scope.md`** is the mission / train / factory contract (in vs out of scope). Keep prompts and CHECKS aligned with it.
+- Do not widen into a whole-diff persona, pure nits (`review/nits`), pure complexity metering (`review/complexity`), or Go domain defects (`go/*`).
+
 ## Design principles
 
 - Prefer a few important, high-confidence observations over broad coverage.
-- Review correctness, completeness, maintainability, readability, architecture, risk, and whether validation appears adequate.
+- Review correctness, completeness, maintainability, architecture, operational risk, and whether validation appears adequate.
 - Require concrete prepared source evidence for every concern.
 - Synthesize related evidence into one engineering story and one remediation.
-- Leave language mechanics, framework practices, security, observability, infrastructure configuration, and detailed test design to specialist adversaries.
+- Leave language mechanics, framework practices, security, observability, infrastructure configuration, pure style, and detailed test design to specialist adversaries.
 - Use the model for engineering judgment and the SDK for finding synthesis, ranking, grouping, and opinion language.
 - Never execute, install dependencies in, or modify the scanned repository.
 

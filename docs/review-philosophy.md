@@ -1,21 +1,21 @@
 # Review philosophy
 
-Scope (mission / in / out of scope, factory grading): see **[scope.md](./scope.md)**.
+**Mission / in / out of scope / train grading:** see **[`agent/scope.md`](../agent/scope.md)** (source of truth).
 
 Engineering Review answers one question: **would an experienced software engineer approve this implementation?**
 
 It evaluates engineering quality across languages. Its authority is:
 
-- correctness and internal consistency;
+- correctness and internal consistency of the *change as an engineering story*;
 - completeness across related code paths, callers, compatibility, and obvious validation needs;
 - incomplete remediation: aligning a weak path with a stronger sibling without finishing the shared contract (including defensive nil-context / cancellation-token coercion that undoes the point of threading lifecycle control);
-- maintainability, responsibility boundaries, useful abstraction, and future evolution;
-- readability of intent, naming, control flow, and localized complexity;
+- maintainability, responsibility boundaries, useful abstraction, and future evolution when cost is material;
+- readability of intent when confusion creates real risk — not bikeshed naming (`review/nits`);
 - architectural fit, dependency direction, boundaries, and coupling;
 - operational risk, rollback difficulty, hidden behavior, and blast radius;
 - whether important changed behavior appears adequately validated.
 
-It does not perform a deep testing review. It also does not own language idioms, type-system mechanics, HTTP middleware, database transactions, container files, CI systems, security, observability, or framework-specific practices. It may mention one of those areas only when the evidence supports a broader engineering concern such as an incomplete implementation or uncontrolled blast radius.
+It does not perform a deep testing review. It also does not own pure complexity metering (`review/complexity`), language idioms, type-system mechanics, HTTP middleware, database transactions, container files, CI systems, security, observability, or framework-specific practices. It may mention one of those areas only when the evidence supports a broader engineering concern such as an incomplete implementation or uncontrolled blast radius.
 
 ## Voice
 
