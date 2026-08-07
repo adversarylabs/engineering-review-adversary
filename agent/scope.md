@@ -37,12 +37,15 @@ Prefer **zero to four** high-confidence observations. Silence beats speculative 
 
 ## Out of scope (not a miss for this package)
 
+Train and factory **must not** grade these as eng-review gold. Prefer ignore over false product failures.
+
 ### Taste and pure style → `review/nits` (or ignore)
 
-- “Nit:” renames, formatting, comment wording, godoc polish
+- “Nit:” renames, formatting, trailing commas, comment wording, godoc polish
 - Naming bikesheds without correctness/maintainability impact
-- GitHub suggestion blocks that only rewrite comments or formatting
+- GitHub **suggestion blocks that only rewrite docs/comments/formatting**
 - Unfinished renames / TODO landmines as pure hygiene
+- “Please keep the trailing comma” / pure markup color nits
 
 ### Complexity as the main story → `review/complexity`
 
@@ -51,25 +54,33 @@ Prefer **zero to four** high-confidence observations. Silence beats speculative 
 
 ### Language and domain specialists (not eng-review gold)
 
-- Language idioms and type-system mechanics as such
+- Language idioms and type-system mechanics as such (including TS declaration emit tooling)
 - Go concurrency races, channels, lifecycle → `go/concurrency` (and related)
 - Go HTTP / DB / CLI / modules / security shapes → matching `go/*`
 - Framework conventions, HTTP middleware details, DB transaction mechanics as idioms
 - Security deep-dives (secrets, authz models, CVE class) → `security/*` / domain packs
 - Observability/instrumentation detail as such
-- Exhaustive testing technique / coverage metrics (as process lectures)
+- Exhaustive testing technique / coverage metrics / “move this test file” process
 
-### Infra and process
+### Process, social, and non-reviewer noise (never gold)
 
-- **CI/CD and GitHub Actions** → CI specialists (`ci/github-actions`, etc.)
-- Dockerfiles / container build trivia → `container/dockerfile` (unless the issue is an **app-level** operational design concern encoded in product code)
-- “LGTM”, process, merge logistics
-- **Bot / automated reviewers** (Copilot overview, dependabot, …) — never gold
-- **PR overview / summary dumps** that restate the change without a specific engineering defect
+- Welcome / thanks / onboarding, “LGTM”, soft “looks good / minor suggestion”
+- Author status replies (“Fixed: …”, “Good catch, this was real”, “I’ll revert after e2e”)
+- Coordination (“I can push updates”, “pending fix in other repo”)
+- “Not changed in this diff” / pure process without a product defect
+- Open-ended feature requests with no incomplete contract in *this* change
+- Bare “add tests” / “needs E2E” **without naming the important changed behavior**
+- **Bot / automated reviewers** and **PR overview dumps** (Copilot, CodeRabbit, Greptile, …)
+- Patch-only suggestion fences with **no engineering principle** (no incompleteness, blast radius, layering, or contract claim)
+
+### Infra
+
+- **CI/CD and GitHub Actions** → CI specialists
+- Dockerfiles / container build trivia → `container/dockerfile` (unless app-level ops design in product code)
 
 ### Persona posture
 
-- “Wrong stack / get another reviewer” whole-product posture → persona packages, not this one
+- “Wrong stack / get another reviewer” → persona packages
 
 Mention a specialist area **only** when evidence establishes a **broader engineering** concern (incomplete contract, uncontrolled blast radius, unfinished sibling paths).
 
@@ -92,9 +103,11 @@ Train with **`official.enabled: true`** so catalog specialists catch domain gold
 - **Out of scope** → do not treat as gold; do not create a miss issue here
 - **Better fit for another adversary** (official jury or sibling) → route there; do not double-count as a miss here
 - **Unclear** → prefer **out-of-scope** for grading (avoid false product failures)
+- **`train-human` alone is not a product backlog item** — only graded **misses** (or explicit false positives) should open implement issues. Human rows are optional voice/bank material after triage.
 
 ## Notes for authors
 
 - Keep prompts (`src/prompt.ts`) and CHECKS aligned with this file.
 - When behavior or mission shifts, update this file in the same change.
 - Do not widen scope to “everything a careful human said” — that is a different product.
+- Prefer **one issue per engineering class** (e.g. incomplete error control flow) over one issue per PR sentence.
