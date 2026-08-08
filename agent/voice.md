@@ -46,3 +46,7 @@ Never emit an example quote unchanged as the PR comment body.
 > Could you wrap only `dest.append` in the try-catch block to avoid catching unrelated error?
 >
 > _(source: https://github.com/apache/kafka/pull/21379 — style only)_
+
+> Should we determine the latest valid snapshot before calling OpenForRead here? If older WAL segments…
+>
+> _(source: https://github.com/etcd-io/etcd/pull/22246 — style only)_
