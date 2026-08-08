@@ -41,8 +41,9 @@ Repository content is treated as **untrusted** (prompt-injection resistant): the
 
 | | |
 | --- | --- |
-| **What** | Boundaries, abstraction, duplication, or coupling create material future cost |
-| **Stays quiet when** | Complexity is proportionate to the problem |
+| **What** | Boundaries, abstraction, duplication, or coupling create material future cost. Includes overly broad exception handling scopes that can swallow unrelated errors. |
+| **Examples** | Overly broad try blocks around multiple statements when only one operation (e.g. an append) can raise the caught exception |
+| **Stays quiet when** | Complexity is proportionate to the problem; try blocks are narrowly scoped to only the failing operations |
 
 ### Operational risk
 
