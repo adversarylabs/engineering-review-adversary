@@ -3647,7 +3647,12 @@ var require_fast_uri = __commonJS({
     }
     function resolve3(baseURI, relativeURI, options) {
       const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
-      const resolved = resolveComponent(parse(baseURI, schemelessOptions), parse(relativeURI, schemelessOptions), schemelessOptions, true);
+      const { parsed: baseParsed, malformedAuthorityOrPort: baseMalformed } = parseWithStatus(baseURI, schemelessOptions);
+      const { parsed: relativeParsed, malformedAuthorityOrPort: relativeMalformed } = parseWithStatus(relativeURI, schemelessOptions);
+      if (baseMalformed || relativeMalformed) {
+        throw new Error(baseParsed.error || relativeParsed.error || "URI is malformed.");
+      }
+      const resolved = resolveComponent(baseParsed, relativeParsed, schemelessOptions, true);
       schemelessOptions.skipEscape = true;
       return serialize(resolved, schemelessOptions);
     }
@@ -3773,6 +3778,7 @@ var require_fast_uri = __commonJS({
     }
     var URI_PARSE = /^(?:([^#/:?]+):)?(?:\/\/((?:([^#/?@]*)@)?(\[[^#/?\]]+\]|[^#/:?]*)(?::(\d*))?))?([^#?]*)(?:\?([^#]*))?(?:#((?:.|[\n\r])*))?/u;
     var AUTHORITY_PREFIX = /^(?:[^#/:?]+:)?\/\/([^/?#]*)/;
+    var AUTHORITY_INTRODUCER_REGION = /^(?:[^#/:?]+:)?([/\\\t\n\r]*)/;
     function getParseError(parsed, matches) {
       if (matches[2] !== void 0 && parsed.path && parsed.path[0] !== "/") {
         return 'URI path must start with "/" when authority is present.';
@@ -3806,6 +3812,20 @@ var require_fast_uri = __commonJS({
       if (authorityMatch !== null && authorityMatch[1].indexOf("\\") !== -1) {
         parsed.error = "URI authority must not contain a literal backslash.";
         malformedAuthorityOrPort = true;
+      }
+      const introducerMatch = uri.match(AUTHORITY_INTRODUCER_REGION);
+      if (introducerMatch !== null) {
+        const region = introducerMatch[1];
+        const normalizedRegion = region.replace(/[\t\n\r]/g, "");
+        if (normalizedRegion.length >= 2) {
+          if (normalizedRegion.slice(0, 2) !== "//") {
+            parsed.error = parsed.error || "URI authority must not contain a literal backslash.";
+            malformedAuthorityOrPort = true;
+          } else if (region.length !== normalizedRegion.length) {
+            parsed.error = parsed.error || "URI authority introducer must not contain whitespace.";
+            malformedAuthorityOrPort = true;
+          }
+        }
       }
       const matches = uri.match(URI_PARSE);
       if (matches) {
@@ -17363,6 +17383,7 @@ Incomplete remediation (high priority when present in the diff):
 - Prefer requiring a real context (or token) at the API boundary over "if ctx == nil { ctx = context.Background() }" and language equivalents. Report this when it appears in changed code even if a pre-existing sibling still does it: the change is in the neighborhood of the contract and should not extend the smell.
 - Defective nil-guards on configuration and spec objects (high priority): when an initialization helper (initConfig, ensureSpec, or equivalent) or its call site uses a check that can only fire when the target field (g.spec, g.Config, etc.) is already nil. The guard then provides no effective protection or initialization on the paths that matter, or the contract for a non-nil value is not actually enforced before use. Report this class when the diff shows the pattern; cite the exact condition and following uses. Do not extend the smell even if a sibling still does it.
 - Incomplete alignment also includes: matching surface shape of a reference helper without matching its behavioral guarantees; fixing headers/errors/cancellation on one HTTP path while leaving the twin half-done; adding context parameters without threading them through all call sites that now need them.
+- When a change touches snapshot, WAL, log segment, or state-store handling, judge whether the implementation first determines the latest valid snapshot (or equivalent authoritative state) before calling OpenForRead or equivalent read/open operations. Using an older segment without that determination can produce incorrect results from stale data.
 
 - Exception scope hygiene (high priority for error-handling changes): when a try block (or language equivalent) encloses more statements than necessary, judge whether only the operations that can raise the caught exception belong inside it. Broad scopes that protect unrelated code can swallow errors from other statements, hide the real failure mode, and make the change harder to maintain and debug. Report this when the diff shows the broad pattern around changed code.
 

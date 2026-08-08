@@ -34,7 +34,7 @@ Repository content is treated as **untrusted** (prompt-injection resistant): the
 | | |
 | --- | --- |
 | **What** | Change claims to align a weak path with a stronger sibling but leaves the shared contract incomplete |
-| **Examples** | Accepting `ctx` but coercing nil to `Background`/`TODO`; fixing one HTTP path and leaving its twin half-done; adding parameters without threading call sites; nil-guards on spec/config objects (e.g. `initConfig`) that can only fire if the field is already nil |
+| **Examples** | Accepting `ctx` but coercing nil to `Background`/`TODO`; fixing one HTTP path and leaving its twin half-done; adding parameters without threading call sites; nil-guards on spec/config objects (e.g. `initConfig`) that can only fire if the field is already nil; calling OpenForRead (or equivalent) on a snapshot/WAL/state without first determining the latest valid snapshot |
 | **Stays quiet when** | Contract is complete or the gap is outside the changed neighborhood |
 
 ### Maintainability & architecture
