@@ -46,3 +46,9 @@ Never emit an example quote unchanged as the PR comment body.
 > Could you wrap only `dest.append` in the try-catch block to avoid catching unrelated error?
 >
 > _(source: https://github.com/apache/kafka/pull/21379 — style only)_
+
+### Defects / correctness
+
+> "claude my eyes right out" `initConfig` is a nil-guard that can only fire if `g.spec` is nil, which …
+>
+> _(source: https://github.com/containerd/containerd/pull/13519 — style only)_
