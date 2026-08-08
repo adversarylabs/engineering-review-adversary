@@ -338,3 +338,95 @@ test("clean narrow try scope produces no observation for this class", async () =
   assert.deepEqual(result.findings, []);
   assert.equal(result.opinion?.ship, true);
 });
+
+test("prompt guides model on latest valid snapshot determination before OpenForRead (technical judgment class)", async () => {
+  const root = await mkdtemp(join(tmpdir(), "engineering-review-snapshot-"));
+  await writeFile(join(root, "main.go"), "package main\n\nfunc loadSnapshot() {\n  snap := openForRead(\"snap-001\") // older segment, no latest determination\n  process(snap)\n}\n\nfunc openForRead(name string) Snapshot { return Snapshot{} }\n");
+  const model: ReviewModel = repositoryReviewModel(
+    ["main.go"],
+    async <T>(request: ModelReviewRequest) => {
+      assert.match(request.prompt, /latest valid snapshot/);
+      assert.match(request.prompt, /OpenForRead or equivalent read\/open operations/);
+      assert.match(request.prompt, /Using an older segment without that determination/);
+      return {
+        output: {
+          schemaVersion: 1,
+          overall: {
+            verdict: "incomplete-implementation",
+            risk: "medium",
+            ship: false,
+            summary: "The change performs reads on snapshot state without ensuring the latest valid one.",
+            primaryConcern: "the missing latest-snapshot determination before read",
+          },
+          observations: [{
+            id: "snapshot-latest-missing",
+            title: "Snapshot read without latest valid determination",
+            category: "completeness",
+            severity: "medium",
+            confidence: "high",
+            principle: "Reads on snapshot or WAL state should use the latest valid snapshot rather than an arbitrary older segment.",
+            summary: "openForRead is called on a named older segment without first determining the latest valid snapshot.",
+            impact: "Stale data from older WAL segments can be processed, leading to incorrect results or missed updates.",
+            recommendation: "Determine the latest valid snapshot first, then open and use that one.",
+            tradeoffs: "The extra determination step prevents operating on stale state at the cost of one additional lookup.",
+            evidence: [{
+              citationId: "repo:read:1",
+              line: 4,
+              detail: "The openForRead call uses a fixed older segment name without latest check.",
+            }],
+          }],
+          strengths: [],
+        } as T,
+        provider: "fixture",
+        model: "fixture",
+      };
+    },
+  );
+
+  const result = await createApp().run({
+    input: { source: { path: root } },
+    model,
+  });
+
+  assert.equal(result.findings.length, 1);
+  const first = result.findings[0];
+  assert.ok(first);
+  assert.equal(first.category, "completeness");
+  assert.match(first.title ?? "", /snapshot/i);
+  assert.equal(result.opinion?.ship, false);
+});
+
+test("prompt guides model on clean latest valid snapshot determination (no trigger for class)", async () => {
+  const root = await mkdtemp(join(tmpdir(), "engineering-review-snapshot-clean-"));
+  await writeFile(join(root, "main.go"), "package main\n\nfunc loadSnapshot() {\n  latest := determineLatestValidSnapshot()\n  snap := openForRead(latest) // uses latest\n  process(snap)\n}\n\nfunc determineLatestValidSnapshot() string { return \"latest\" }\nfunc openForRead(name string) Snapshot { return Snapshot{} }\n");
+  const model: ReviewModel = repositoryReviewModel(
+    ["main.go"],
+    async <T>(request: ModelReviewRequest) => {
+      assert.match(request.prompt, /latest valid snapshot/);
+      return {
+        output: {
+          schemaVersion: 1,
+          overall: {
+            verdict: "well-engineered",
+            risk: "none",
+            ship: true,
+            summary: "The implementation correctly determines latest state before read.",
+            primaryConcern: "",
+          },
+          observations: [],
+          strengths: [],
+        } as T,
+        provider: "fixture",
+        model: "fixture",
+      };
+    },
+  );
+
+  const result = await createApp().run({
+    input: { source: { path: root } },
+    model,
+  });
+
+  assert.deepEqual(result.findings, []);
+  assert.equal(result.opinion?.ship, true);
+});
