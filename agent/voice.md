@@ -46,3 +46,7 @@ Never emit an example quote unchanged as the PR comment body.
 > Could you wrap only `dest.append` in the try-catch block to avoid catching unrelated error?
 >
 > _(source: https://github.com/apache/kafka/pull/21379 — style only)_
+
+> Had a quick check if timeout > interval would be a problem (and not causing go-routines to accumulate...).
+>
+> _(source: https://github.com/moby/moby/pull/53317 — style only)_
