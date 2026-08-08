@@ -338,3 +338,92 @@ test("clean narrow try scope produces no observation for this class", async () =
   assert.deepEqual(result.findings, []);
   assert.equal(result.opinion?.ship, true);
 });
+
+test("prompt guides model on limited nil-guards for init/config (can only fire under extra condition)", async () => {
+  const root = await mkdtemp(join(tmpdir(), "engineering-review-nil-guard-"));
+  await writeFile(join(root, "main.go"), "package main\n\ntype G struct { spec *int }\n\nvar initConfig *int\n\nfunc setup(g *G) {\n  if g.spec == nil {\n    if initConfig == nil {\n      initConfig = new(int)\n    }\n  }\n}\n");
+  const model: ReviewModel = repositoryReviewModel(
+    ["main.go"],
+    async <T>(request: ModelReviewRequest) => {
+      assert.match(request.prompt, /nil-guard for an initialization or configuration variable/);
+      assert.match(request.prompt, /can only fire under an additional condition/);
+      assert.match(request.prompt, /"g\.spec" or similar state is also nil/);
+      return {
+        output: {
+          schemaVersion: 1,
+          overall: {
+            verdict: "incomplete-implementation",
+            risk: "medium",
+            ship: false,
+            summary: "The implementation appears incomplete at an initialization contract.",
+            primaryConcern: "the narrowly conditioned init guard",
+          },
+          observations: [{
+            id: "limited-init-guard",
+            title: "Nil-guard only fires under extra condition",
+            category: "completeness",
+            severity: "medium",
+            confidence: "high",
+            principle: "Initialization guards must protect all paths that rely on the variable being set.",
+            summary: "The initConfig guard is nested inside another nil check.",
+            impact: "The variable may be used uninitialized when the outer condition does not hold.",
+            recommendation: "Lift the initConfig guard or restructure so it covers the required cases.",
+            tradeoffs: "The extra condition may have been intended for a different purpose.",
+            evidence: [{
+              citationId: "repo:read:1",
+              line: 8,
+              detail: "The inner guard only executes when g.spec is also nil.",
+            }],
+          }],
+          strengths: [],
+        } as T,
+        provider: "fixture",
+        model: "fixture",
+      };
+    },
+  );
+
+  const result = await createApp().run({
+    input: { source: { path: root } },
+    model,
+  });
+
+  assert.equal(result.findings.length, 1);
+  assert.match(result.findings[0]?.summary ?? "", /guard|initConfig|nil|condition/i);
+});
+
+test("clean unconditional nil-guard for init produces no observation for this class", async () => {
+  const root = await mkdtemp(join(tmpdir(), "engineering-review-clean-nil-guard-"));
+  await writeFile(join(root, "main.go"), "package main\n\nvar initConfig *int\n\nfunc setup() {\n  if initConfig == nil {\n    initConfig = new(int)\n  }\n}\n");
+  const model: ReviewModel = repositoryReviewModel(
+    ["main.go"],
+    async <T>(request: ModelReviewRequest) => {
+      // prompt still contains the guidance
+      assert.match(request.prompt, /nil-guard for an initialization or configuration variable/);
+      return {
+        output: {
+          schemaVersion: 1,
+          overall: {
+            verdict: "well-engineered",
+            risk: "none",
+            ship: true,
+            summary: "The implementation is direct and well-scoped.",
+            primaryConcern: "",
+          },
+          observations: [],
+          strengths: [],
+        } as T,
+        provider: "fixture",
+        model: "fixture",
+      };
+    },
+  );
+
+  const result = await createApp().run({
+    input: { source: { path: root } },
+    model,
+  });
+
+  assert.deepEqual(result.findings, []);
+  assert.equal(result.opinion?.ship, true);
+});
