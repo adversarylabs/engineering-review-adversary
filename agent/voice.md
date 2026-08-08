@@ -33,30 +33,14 @@ Most comments follow this shape:
 
 Do not turn every observation into a lecture. Silence or a short note is appropriate when the concern is minor.
 
-## Example maintainer comments (style only)
+## Example reviewer comments (style only)
 
-These are **real maintainer comments used as style few-shots only**.
+These examples demonstrate cadence, not detector content. Re-ground every claim
+in the current evidence, vary the surface wording, and never copy an example as
+the review body.
 
-When rewriting findings: match cadence and bluntness; re-ground every claim
-in the *current* finding evidence. Never invent facts from these examples.
-Never emit an example quote unchanged as the PR comment body.
+> This changes the public contract in one layer, but the downstream representation still enforces the old one. Finish the migration or keep the original contract for now.
 
-### Design / technical judgment
+> These paths now encode the same decision independently. Put the policy behind one owner so the next change cannot make them disagree.
 
-> Could you wrap only `dest.append` in the try-catch block to avoid catching unrelated error?
->
-> _(source: https://github.com/apache/kafka/pull/21379 — style only)_
-
-> Should we determine the latest valid snapshot before calling OpenForRead here? If older WAL segments…
->
-> _(source: https://github.com/etcd-io/etcd/pull/22246 — style only)_
-
-> Had a quick check if timeout > interval would be a problem (and not causing go-routines to accumulate...).
->
-> _(source: https://github.com/moby/moby/pull/53317 — style only)_
-
-### Defects / correctness
-
-> "claude my eyes right out" `initConfig` is a nil-guard that can only fire if `g.spec` is nil, which …
->
-> _(source: https://github.com/containerd/containerd/pull/13519 — style only)_
+> The test reaches the new branch, but it never observes the behavior this change promises. Assert the externally visible effect so the original failure would make this test fail.

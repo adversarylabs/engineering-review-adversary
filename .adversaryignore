@@ -4,6 +4,7 @@ fixtures/
 scripts/
 coverage/
 .depot/
+.adversary-train/
 tsconfig.json
 AGENTS.md
 CHECKS.md

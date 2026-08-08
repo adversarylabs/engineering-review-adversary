@@ -27,12 +27,12 @@ Prefer **zero to four** high-confidence observations. Silence beats speculative 
 
 - Correctness and **internal consistency of the change** as an engineering story (not language-race/TLS/CVE hunting)
 - Incomplete implementation across related paths, callers, compatibility, or validation
-- Incomplete remediation (e.g. half-fixed contracts; accepting context/cancellation then coercing nil to Background/TODO and undoing lifecycle control)
+- Incomplete remediation or migration where a changed contract is not carried through related layers, consumers, or lifecycle behavior
 - Maintainability with **material future cost**: wrong boundaries, harmful coupling, duplication that will rot
 - Abstraction that is **disproportionate and** creates a real engineering problem (if the only point is “too much machinery,” prefer `review/complexity`)
 - Architectural fit, dependency direction, layering violations in product code
 - Operational risk: blast radius, hidden behavior, rollout/rollback difficulty
-- Important **changed** behavior that appears inadequately validated — name the behavior; do not demand “more tests” generically
+- Important **changed** behavior whose invariant is not actually proved — name the behavior and missing proof; do not demand “more tests” generically
 - Readability of intent **only when** confusion creates real correctness, contract, or ops risk (not bikeshed naming)
 
 ## Out of scope (not a miss for this package)
@@ -51,7 +51,7 @@ Prefer **zero to four** high-confidence observations. Silence beats speculative 
 
 ### Language and domain specialists (not eng-review gold)
 
-- Language idioms and type-system mechanics as such
+- Language idioms and type-system mechanics as such; contract propagation across layers remains in scope when the syntax is incidental
 - Go concurrency races, channels, lifecycle → `go/concurrency` (and related)
 - Go HTTP / DB / CLI / modules / security shapes → matching `go/*`
 - Framework conventions, HTTP middleware details, DB transaction mechanics as idioms

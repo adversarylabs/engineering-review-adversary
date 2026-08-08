@@ -250,104 +250,17 @@ test("self-negating observations cannot veto approval", async () => {
   assert.equal(result.opinion?.ship, true);
 });
 
-test("prompt guides model on narrow exception scopes (broad try-catch class)", async () => {
-  const root = await mkdtemp(join(tmpdir(), "engineering-review-try-scope-"));
-  await writeFile(join(root, "main.go"), "package main\n\nfunc process() {\n  try {\n    foo()\n    dest.append(x)\n    bar()\n  } catch (e error) {\n    // broad\n  }\n}\n");
-  const model: ReviewModel = repositoryReviewModel(
-    ["main.go"],
-    async <T>(request: ModelReviewRequest) => {
-      assert.match(request.prompt, /Exception scope hygiene/);
-      assert.match(request.prompt, /Broad scopes that protect unrelated code/);
-      assert.match(request.prompt, /only the operations that can raise the caught exception belong inside it/);
-      return {
-        output: {
-          schemaVersion: 1,
-          overall: {
-            verdict: "ready-with-minor-improvements",
-            risk: "low",
-            ship: true,
-            summary: "The implementation is mostly sound with one maintainability note on error handling.",
-            primaryConcern: "the overly broad exception scope",
-          },
-          observations: [{
-            id: "broad-try-scope",
-            title: "Overly broad try block",
-            category: "maintainability",
-            severity: "low",
-            confidence: "high",
-            principle: "Try blocks should be scoped only to the operations that can raise the caught exception.",
-            summary: "The try encloses unrelated statements.",
-            impact: "Unrelated errors can be swallowed and the failure mode is harder to diagnose.",
-            recommendation: "Wrap only the append (or equivalent) that can actually fail.",
-            tradeoffs: "Narrowing the scope makes the intent clearer without changing behavior.",
-            evidence: [{
-              citationId: "repo:read:1",
-              line: 5,
-              detail: "The try block covers foo, append, and bar.",
-            }],
-          }],
-          strengths: [],
-        } as T,
-        provider: "fixture",
-        model: "fixture",
-      };
-    },
+test("generalized contract guidance supports one cross-layer finding", async () => {
+  const root = await mkdtemp(join(tmpdir(), "engineering-review-contract-"));
+  await writeFile(
+    join(root, "settings.py"),
+    "def configure(value: int | str):\n    return send_to_adapter(value)\n\ndef send_to_adapter(value: str):\n    return value.upper()\n",
   );
-
-  const result = await createApp().run({
-    input: { source: { path: root } },
-    model,
-  });
-
-  assert.equal(result.findings.length, 1);
-  assert.match(result.findings[0]?.summary ?? "", /broad|scope|try|append|unrelated/i);
-});
-
-test("clean narrow try scope produces no observation for this class", async () => {
-  const root = await mkdtemp(join(tmpdir(), "engineering-review-narrow-try-"));
-  await writeFile(join(root, "main.go"), "package main\n\nfunc process() {\n  try {\n    dest.append(x)\n  } catch (e error) {\n    // narrow and correct\n  }\n  foo()\n  bar()\n}\n");
   const model: ReviewModel = repositoryReviewModel(
-    ["main.go"],
+    ["settings.py"],
     async <T>(request: ModelReviewRequest) => {
-      // still contains the guidance but model returns no observation for this
-      assert.match(request.prompt, /Exception scope hygiene/);
-      return {
-        output: {
-          schemaVersion: 1,
-          overall: {
-            verdict: "well-engineered",
-            risk: "none",
-            ship: true,
-            summary: "The implementation is direct and well-scoped.",
-            primaryConcern: "",
-          },
-          observations: [],
-          strengths: [],
-        } as T,
-        provider: "fixture",
-        model: "fixture",
-      };
-    },
-  );
-
-  const result = await createApp().run({
-    input: { source: { path: root } },
-    model,
-  });
-
-  assert.deepEqual(result.findings, []);
-  assert.equal(result.opinion?.ship, true);
-});
-
-test("prompt guides model on latest valid snapshot determination before OpenForRead (technical judgment class)", async () => {
-  const root = await mkdtemp(join(tmpdir(), "engineering-review-snapshot-"));
-  await writeFile(join(root, "main.go"), "package main\n\nfunc loadSnapshot() {\n  snap := openForRead(\"snap-001\") // older segment, no latest determination\n  process(snap)\n}\n\nfunc openForRead(name string) Snapshot { return Snapshot{} }\n");
-  const model: ReviewModel = repositoryReviewModel(
-    ["main.go"],
-    async <T>(request: ModelReviewRequest) => {
-      assert.match(request.prompt, /latest valid snapshot/);
-      assert.match(request.prompt, /OpenForRead or equivalent read\/open operations/);
-      assert.match(request.prompt, /Using an older segment without that determination/);
+      assert.match(request.prompt, /Contract integrity/);
+      assert.match(request.prompt, /Report one incomplete engineering story, not one issue per layer/);
       return {
         output: {
           schemaVersion: 1,
@@ -355,24 +268,28 @@ test("prompt guides model on latest valid snapshot determination before OpenForR
             verdict: "incomplete-implementation",
             risk: "medium",
             ship: false,
-            summary: "The change performs reads on snapshot state without ensuring the latest valid one.",
-            primaryConcern: "the missing latest-snapshot determination before read",
+            summary: "The widened input contract is not supported by the downstream adapter.",
+            primaryConcern: "the partially propagated input contract",
           },
           observations: [{
-            id: "snapshot-latest-missing",
-            title: "Snapshot read without latest valid determination",
+            id: "partial-contract-migration",
+            title: "Input contract stops at the adapter",
             category: "completeness",
             severity: "medium",
             confidence: "high",
-            principle: "Reads on snapshot or WAL state should use the latest valid snapshot rather than an arbitrary older segment.",
-            summary: "openForRead is called on a named older segment without first determining the latest valid snapshot.",
-            impact: "Stale data from older WAL segments can be processed, leading to incorrect results or missed updates.",
-            recommendation: "Determine the latest valid snapshot first, then open and use that one.",
-            tradeoffs: "The extra determination step prevents operating on stale state at the cost of one additional lookup.",
+            principle: "A changed contract must be carried through every related consumer.",
+            summary: "The public entry point accepts integers while its adapter still accepts only strings.",
+            impact: "Newly valid public inputs fail when they reach the unchanged downstream layer.",
+            recommendation: "Propagate the widened contract through the adapter or keep the public input restricted.",
+            tradeoffs: "Keeping the narrower contract is preferable if the adapter cannot support the new values yet.",
             evidence: [{
               citationId: "repo:read:1",
+              line: 1,
+              detail: "The entry point accepts both integers and strings.",
+            }, {
+              citationId: "repo:read:1",
               line: 4,
-              detail: "The openForRead call uses a fixed older segment name without latest check.",
+              detail: "The downstream adapter remains string-only.",
             }],
           }],
           strengths: [],
@@ -389,20 +306,22 @@ test("prompt guides model on latest valid snapshot determination before OpenForR
   });
 
   assert.equal(result.findings.length, 1);
-  const first = result.findings[0];
-  assert.ok(first);
-  assert.equal(first.category, "completeness");
-  assert.match(first.title ?? "", /snapshot/i);
+  assert.equal(result.findings[0]?.evidence?.length, 2);
   assert.equal(result.opinion?.ship, false);
 });
 
-test("prompt guides model on clean latest valid snapshot determination (no trigger for class)", async () => {
-  const root = await mkdtemp(join(tmpdir(), "engineering-review-snapshot-clean-"));
-  await writeFile(join(root, "main.go"), "package main\n\nfunc loadSnapshot() {\n  latest := determineLatestValidSnapshot()\n  snap := openForRead(latest) // uses latest\n  process(snap)\n}\n\nfunc determineLatestValidSnapshot() string { return \"latest\" }\nfunc openForRead(name string) Snapshot { return Snapshot{} }\n");
+test("candidate gate keeps optional future concerns silent", async () => {
+  const root = await mkdtemp(join(tmpdir(), "engineering-review-gate-"));
+  await writeFile(
+    join(root, "formatter.java"),
+    "final class Formatter {\n  String format(String value) { return value.trim(); }\n}\n",
+  );
   const model: ReviewModel = repositoryReviewModel(
-    ["main.go"],
+    ["formatter.java"],
     async <T>(request: ModelReviewRequest) => {
-      assert.match(request.prompt, /latest valid snapshot/);
+      assert.match(request.prompt, /Candidate gate/);
+      assert.match(request.prompt, /hypothetical future misuse/);
+      assert.match(request.prompt, /specific, proportionate action/);
       return {
         output: {
           schemaVersion: 1,
@@ -410,7 +329,7 @@ test("prompt guides model on clean latest valid snapshot determination (no trigg
             verdict: "well-engineered",
             risk: "none",
             ship: true,
-            summary: "The implementation correctly determines latest state before read.",
+            summary: "The direct implementation has no demonstrated engineering defect.",
             primaryConcern: "",
           },
           observations: [],
