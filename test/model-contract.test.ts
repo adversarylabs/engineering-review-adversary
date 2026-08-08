@@ -12,6 +12,9 @@ test("prompt defines staff-level authority and specialist boundaries", () => {
   assert.match(ENGINEERING_REVIEW_PROMPT, /primaryConcern must be a short noun phrase/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /repository tools/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /citationId/);
+  // Coverage for the timeout/interval technical judgment class (train #72)
+  assert.match(ENGINEERING_REVIEW_PROMPT, /Timer and interval relationships/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /accumulation/);
 });
 
 test("model schema is strict and avoids provider-specific constraint keywords", async () => {

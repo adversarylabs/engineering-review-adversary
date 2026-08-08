@@ -50,3 +50,13 @@ Never emit an example quote unchanged as the PR comment body.
 > Should we determine the latest valid snapshot before calling OpenForRead here? If older WAL segments…
 >
 > _(source: https://github.com/etcd-io/etcd/pull/22246 — style only)_
+
+> Had a quick check if timeout > interval would be a problem (and not causing go-routines to accumulate...).
+>
+> _(source: https://github.com/moby/moby/pull/53317 — style only)_
+
+### Defects / correctness
+
+> "claude my eyes right out" `initConfig` is a nil-guard that can only fire if `g.spec` is nil, which …
+>
+> _(source: https://github.com/containerd/containerd/pull/13519 — style only)_

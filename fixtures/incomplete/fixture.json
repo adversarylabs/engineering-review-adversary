@@ -2,6 +2,7 @@
   "changedFiles": [
     "src/job.rs",
     "src/api.rs",
-    "tests/job_test.rs"
+    "tests/job_test.rs",
+    "src/generator.rs"
   ]
 }

@@ -55,6 +55,30 @@
           "citationId": "repo:read:3"
         }
       ]
+    },
+    {
+      "id": "defective-nil-guard-on-spec",
+      "title": "Defective nil-guard on configuration spec",
+      "category": "completeness",
+      "severity": "medium",
+      "confidence": "high",
+      "principle": "Initialization contracts for core config objects must be enforced on all paths before use; a guard that only activates when the field is already nil does not protect callers.",
+      "summary": "set_version_vulnerable only calls init_config under the condition that spec is already absent, leaving the initialization contract incomplete.",
+      "impact": "Callers relying on the guard may observe uninitialized or partially initialized specs on some paths.",
+      "recommendation": "Make init_config unconditional from all public setters (as in set_version_clean) or remove the redundant outer guard so the helper always ensures a non-nil spec.",
+      "tradeoffs": "If lazy init is intentional, callers must still guarantee the field before any use that assumes it is present.",
+      "evidence": [
+        {
+          "line": 20,
+          "detail": "The vulnerable setter guards the init call on spec being none.",
+          "citationId": "repo:read:4"
+        },
+        {
+          "line": 14,
+          "detail": "init_config itself only populates inside the same nil check.",
+          "citationId": "repo:read:4"
+        }
+      ]
     }
   ],
   "strengths": [
