@@ -338,3 +338,115 @@ test("clean narrow try scope produces no observation for this class", async () =
   assert.deepEqual(result.findings, []);
   assert.equal(result.opinion?.ship, true);
 });
+
+test("prompt guides model on timing and interval hygiene (timeout > interval class)", async () => {
+  const root = await mkdtemp(join(tmpdir(), "engineering-review-timeout-interval-"));
+  await writeFile(join(root, "main.go"), `package main
+
+import "time"
+
+func monitor() {
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
+	for range ticker.C {
+		// work that can exceed interval
+		time.Sleep(30 * time.Second)
+	}
+}
+`);
+  const model: ReviewModel = repositoryReviewModel(
+    ["main.go"],
+    async <T>(request: ModelReviewRequest) => {
+      assert.match(request.prompt, /Timing and interval hygiene/);
+      assert.match(request.prompt, /timeout > interval/);
+      assert.match(request.prompt, /goroutine accumulation/);
+      return {
+        output: {
+          schemaVersion: 1,
+          overall: {
+            verdict: "ready-with-minor-improvements",
+            risk: "low",
+            ship: true,
+            summary: "The implementation is mostly sound with one operational note on timing.",
+            primaryConcern: "the timeout and interval relationship",
+          },
+          observations: [{
+            id: "timeout-interval-mismatch",
+            title: "Timeout larger than interval",
+            category: "operational-risk",
+            severity: "low",
+            confidence: "high",
+            principle: "Timeout and interval values in background loops should not allow accumulation of work.",
+            summary: "The timeout exceeds the poll interval.",
+            impact: "Slow operations could cause goroutines to accumulate.",
+            recommendation: "Ensure timeout is shorter than interval or add work bounding and single-worker enforcement.",
+            tradeoffs: "Tightening the values prevents resource growth without changing the core behavior.",
+            evidence: [{
+              citationId: "repo:read:1",
+              line: 10,
+              detail: "Ticker interval 10s with work that can exceed it.",
+            }],
+          }],
+          strengths: [],
+        } as T,
+        provider: "fixture",
+        model: "fixture",
+      };
+    },
+  );
+
+  const result = await createApp().run({
+    input: { source: { path: root } },
+    model,
+  });
+
+  assert.equal(result.findings.length, 1);
+  assert.match(result.findings[0]?.summary ?? "", /timeout|interval|accumulation|goroutine/i);
+});
+
+test("clean timeout/interval relationship produces no observation for this class", async () => {
+  const root = await mkdtemp(join(tmpdir(), "engineering-review-clean-timeout-"));
+  await writeFile(join(root, "main.go"), `package main
+
+import "time"
+
+func monitor() {
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+	for range ticker.C {
+		// work completes well under the interval
+		time.Sleep(5 * time.Second)
+	}
+}
+`);
+  const model: ReviewModel = repositoryReviewModel(
+    ["main.go"],
+    async <T>(request: ModelReviewRequest) => {
+      assert.match(request.prompt, /Timing and interval hygiene/);
+      return {
+        output: {
+          schemaVersion: 1,
+          overall: {
+            verdict: "well-engineered",
+            risk: "none",
+            ship: true,
+            summary: "The implementation is direct with safe timing parameters.",
+            primaryConcern: "",
+          },
+          observations: [],
+          strengths: [],
+        } as T,
+        provider: "fixture",
+        model: "fixture",
+      };
+    },
+  );
+
+  const result = await createApp().run({
+    input: { source: { path: root } },
+    model,
+  });
+
+  assert.deepEqual(result.findings, []);
+  assert.equal(result.opinion?.ship, true);
+});

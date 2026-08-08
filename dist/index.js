@@ -17365,6 +17365,8 @@ Incomplete remediation (high priority when present in the diff):
 
 - Exception scope hygiene (high priority for error-handling changes): when a try block (or language equivalent) encloses more statements than necessary, judge whether only the operations that can raise the caught exception belong inside it. Broad scopes that protect unrelated code can swallow errors from other statements, hide the real failure mode, and make the change harder to maintain and debug. Report this when the diff shows the broad pattern around changed code.
 
+- Timing and interval hygiene (high priority for background workers, health checks, tickers, and polling loops): when a change introduces or adjusts both a timeout (or deadline) and an interval (or poll period), consider whether timeout > interval (or similar mismatch) could cause goroutine accumulation, overlapping work, or uncontrolled resource use if the operation takes longer than expected. Report this class of technical judgment when the relationship between the values looks risky in context.
+
 Do not become a linter. Do not report language idioms, type-system mechanics, framework conventions, HTTP middleware details, database transaction mechanics, Dockerfiles, CI configuration, security, observability, or detailed testing technique. Those belong to specialist adversaries. Mention such an area only when the evidence establishes a broader engineering concern. Nil-context coercion is an engineering contract issue, not a style nit.
 
 Review behavior:

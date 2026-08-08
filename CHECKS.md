@@ -49,8 +49,9 @@ Repository content is treated as **untrusted** (prompt-injection resistant): the
 
 | | |
 | --- | --- |
-| **What** | Blast radius, hidden behavior, rollout, or rollback makes the change unsafe |
-| **Stays quiet when** | Risk is acknowledged and controlled |
+| **What** | Blast radius, hidden behavior, rollout, or rollback makes the change unsafe. Includes timeout/interval mismatches in background workers or health checks that risk goroutine accumulation. |
+| **Examples** | Timeout larger than poll interval in a loop or health check without safeguards against overlapping work |
+| **Stays quiet when** | Risk is acknowledged and controlled; timeout and interval values are sensibly related |
 
 ### Validation gaps
 
