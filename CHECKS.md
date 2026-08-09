@@ -64,6 +64,13 @@ Repository content is treated as **untrusted** (prompt-injection resistant): the
 | **What** | Blast radius, hidden behavior, rollout, or rollback makes the change unsafe |
 | **Stays quiet when** | Risk is acknowledged and controlled |
 
+### Change cohesion
+
+| | |
+| --- | --- |
+| **What** | Prepared source evidence establishes that a change batches a materially independent behavior objective whose inclusion creates concrete rollback coupling, hidden behavior, or validation ambiguity |
+| **Stays quiet when** | Changed files contribute to one implementation story, the dependency between objectives is explicit, or separateness is inferred only from paths, topic count, or unavailable PR metadata |
+
 ### Validation gaps
 
 | | |
