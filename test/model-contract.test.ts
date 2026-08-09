@@ -18,6 +18,7 @@ test("prompt defines staff-level authority and specialist boundaries", () => {
   assert.match(ENGINEERING_REVIEW_PROMPT, /Proportional tools and work/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /Lifecycle and authority/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /Compatibility and operations/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /Change cohesion/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /Meaningful validation/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /Candidate gate/);
   assert.doesNotMatch(

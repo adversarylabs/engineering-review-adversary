@@ -349,3 +349,129 @@ test("candidate gate keeps optional future concerns silent", async () => {
   assert.deepEqual(result.findings, []);
   assert.equal(result.opinion?.ship, true);
 });
+
+test("change cohesion guidance supports one evidence-backed independent-change finding", async () => {
+  const root = await mkdtemp(join(tmpdir(), "engineering-review-cohesion-"));
+  await writeFile(
+    join(root, "billing.ts"),
+    "export function retryInvoice(id: string) {\n  return scheduleRetry(id, { attempts: 3 });\n}\n",
+  );
+  await writeFile(
+    join(root, "avatar.ts"),
+    "export function avatarUrl(userId: string) {\n  return `/avatars/${userId}?cache=disabled`;\n}\n",
+  );
+  const model: ReviewModel = repositoryReviewModel(
+    ["billing.ts", "avatar.ts"],
+    async <T>(request: ModelReviewRequest) => {
+      assert.match(request.prompt, /Change cohesion/);
+      assert.match(request.prompt, /materially independent behavior change/);
+      assert.match(request.prompt, /Different directories, multiple concerns/);
+      return {
+        output: {
+          schemaVersion: 1,
+          overall: {
+            verdict: "high-operational-risk",
+            risk: "medium",
+            ship: false,
+            summary: "The invoice retry change also batches an independent avatar-cache behavior change.",
+            primaryConcern: "the independently batched avatar-cache behavior",
+          },
+          observations: [{
+            id: "independent-avatar-cache-change",
+            title: "Independent avatar-cache behavior is batched",
+            category: "risk",
+            severity: "medium",
+            confidence: "high",
+            principle: "A change should remain one cohesive engineering and rollback unit.",
+            summary: "Invoice retry policy and avatar cache disabling alter unrelated product behavior in the same change.",
+            impact: "Rolling back either behavior also rolls back the other, and validation of the retry change can miss the cache change.",
+            recommendation: "Split the avatar-cache behavior into its own change, or establish the concrete dependency that requires the two to ship together.",
+            tradeoffs: "Keeping them together is justified only if their rollout and rollback are intentionally coupled.",
+            evidence: [{
+              citationId: "repo:read:1",
+              line: 2,
+              detail: "The billing source changes invoice retry policy.",
+            }, {
+              citationId: "repo:read:2",
+              line: 2,
+              detail: "The avatar source independently disables caching.",
+            }],
+          }],
+          strengths: [],
+        } as T,
+        provider: "fixture",
+        model: "fixture",
+      };
+    },
+  );
+
+  const result = await createApp().run({
+    input: {
+      source: { path: root },
+      change: {
+        type: "diff",
+        base_ref: "base",
+        head_ref: "head",
+        scan_mode: "changed",
+        changed_files: ["billing.ts", "avatar.ts"],
+      },
+    },
+    model,
+  });
+
+  assert.equal(result.findings.length, 1);
+  assert.equal(result.findings[0]?.evidence?.length, 2);
+  assert.equal(result.opinion?.ship, false);
+});
+
+test("cohesive multi-file contract change stays quiet", async () => {
+  const root = await mkdtemp(join(tmpdir(), "engineering-review-cohesion-clean-"));
+  await writeFile(
+    join(root, "settings.ts"),
+    "export interface RetrySettings {\n  attempts: number;\n}\n",
+  );
+  await writeFile(
+    join(root, "worker.ts"),
+    "import type { RetrySettings } from './settings.js';\nexport function retry(settings: RetrySettings) {\n  return settings.attempts;\n}\n",
+  );
+  const model: ReviewModel = repositoryReviewModel(
+    ["settings.ts", "worker.ts"],
+    async <T>(request: ModelReviewRequest) => {
+      assert.match(request.prompt, /Change cohesion/);
+      assert.match(request.prompt, /Recommend splitting the independent change or explain the required dependency/);
+      return {
+        output: {
+          schemaVersion: 1,
+          overall: {
+            verdict: "well-engineered",
+            risk: "none",
+            ship: true,
+            summary: "The settings contract and its consumer form one cohesive retry-policy change.",
+            primaryConcern: "",
+          },
+          observations: [],
+          strengths: [],
+        } as T,
+        provider: "fixture",
+        model: "fixture",
+      };
+    },
+  );
+
+  const result = await createApp().run({
+    input: {
+      source: { path: root },
+      change: {
+        type: "diff",
+        base_ref: "base",
+        head_ref: "head",
+        scan_mode: "changed",
+        changed_files: ["settings.ts", "worker.ts"],
+      },
+    },
+    model,
+  });
+
+  assert.deepEqual(result.findings, []);
+  assert.equal(result.opinion?.ship, true);
+});
