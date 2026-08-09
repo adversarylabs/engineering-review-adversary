@@ -12,9 +12,18 @@ test("prompt defines staff-level authority and specialist boundaries", () => {
   assert.match(ENGINEERING_REVIEW_PROMPT, /primaryConcern must be a short noun phrase/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /repository tools/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /citationId/);
-  // Coverage for the timeout/interval technical judgment class (train #72)
-  assert.match(ENGINEERING_REVIEW_PROMPT, /Timer and interval relationships/);
-  assert.match(ENGINEERING_REVIEW_PROMPT, /accumulation/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /Contract integrity/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /Ownership and boundaries/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /One source of truth/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /Proportional tools and work/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /Lifecycle and authority/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /Compatibility and operations/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /Meaningful validation/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /Candidate gate/);
+  assert.doesNotMatch(
+    ENGINEERING_REVIEW_PROMPT,
+    /initConfig|g\.spec|OpenForRead|dest\.append|goroutine|context\.Background/,
+  );
 });
 
 test("model schema is strict and avoids provider-specific constraint keywords", async () => {

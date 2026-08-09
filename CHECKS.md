@@ -29,21 +29,33 @@ Repository content is treated as **untrusted** (prompt-injection resistant): the
 ## In-scope observation classes
 
 
-### Completeness / contract alignment
+### Contract integrity and compatibility
 
 | | |
 | --- | --- |
-| **What** | Change claims to align a weak path with a stronger sibling but leaves the shared contract incomplete |
-| **Examples** | Accepting `ctx` but coercing nil to `Background`/`TODO`; fixing one HTTP path and leaving its twin half-done; adding parameters without threading call sites; nil-guards on spec/config objects (e.g. `initConfig`) that can only fire if the field is already nil; calling OpenForRead (or equivalent) on a snapshot/WAL/state without first determining the latest valid snapshot |
-| **Stays quiet when** | Contract is complete or the gap is outside the changed neighborhood |
+| **What** | A changed contract is not carried through related representations, consumers, sibling paths, state transitions, or compatibility boundaries |
+| **Stays quiet when** | The migration is complete, compatibility is established, or the concern is outside the changed contract neighborhood |
 
-### Maintainability & architecture
+### Ownership, boundaries, and sources of truth
 
 | | |
 | --- | --- |
-| **What** | Boundaries, abstraction, duplication, or coupling create material future cost. Includes overly broad exception handling scopes that can swallow unrelated errors. |
-| **Examples** | Overly broad try blocks around multiple statements when only one operation (e.g. an append) can raise the caught exception |
-| **Stays quiet when** | Complexity is proportionate to the problem; try blocks are narrowly scoped to only the failing operations |
+| **What** | A change bypasses an intentional boundary, misplaces a decision, or duplicates policy that must evolve together, creating concrete coupling or drift risk |
+| **Stays quiet when** | Responsibilities have a clear owner, or superficially similar implementations represent independent policies |
+
+### Proportional tools and work
+
+| | |
+| --- | --- |
+| **What** | A materially broad or expensive operation is used for a narrower need, or work is performed unconditionally for consumers that cannot use it |
+| **Stays quiet when** | The broader operation is required for correctness, shared by the relevant consumers, or the alleged cost is speculative micro-optimization |
+
+### Lifecycle and authoritative state
+
+| | |
+| --- | --- |
+| **What** | Reachable ordering across asynchronous operations or state transitions can consume stale/non-authoritative state or leave the lifecycle incomplete |
+| **Stays quiet when** | State ownership and ordering are explicit, or concurrency exists without a demonstrated incorrect outcome |
 
 ### Operational risk
 
@@ -56,9 +68,9 @@ Repository content is treated as **untrusted** (prompt-injection resistant): the
 
 | | |
 | --- | --- |
-| **What** | Important changed behavior lacks adequate validation evidence |
-| **Stays quiet when** | Behavior is covered or the platform contract already provides the check |
-| **Note** | Does not demand tests generically — names the behavior that is unproven |
+| **What** | Validation does not prove an important changed invariant because it misses the triggering conditions, meaningful oracle, real effect, or material state transition |
+| **Stays quiet when** | Existing evidence or the platform contract already proves the invariant |
+| **Note** | Does not demand tests generically or prescribe specialist-level technique |
 
 ### Overall assessment (not a rule id flood)
 
