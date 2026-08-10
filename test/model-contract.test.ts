@@ -17,6 +17,7 @@ test("prompt defines staff-level authority and specialist boundaries", () => {
   assert.match(ENGINEERING_REVIEW_PROMPT, /One source of truth/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /Constraint scope/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /Alternate-path semantics/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /Progress accounting/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /Proportional tools and work/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /Lifecycle and authority/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /Compatibility and operations/);
@@ -61,6 +62,22 @@ test("prompt preserves value metadata on alternate paths", () => {
   assert.match(ENGINEERING_REVIEW_PROMPT, /input is statically non-nullable/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /earlier step removes invalid items/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /evaluates the value together with its metadata/);
+});
+
+test("prompt accounts for actual pagination progress", () => {
+  assert.match(
+    ENGINEERING_REVIEW_PROMPT,
+    /advance by actual consumption unless the changed code establishes that every non-final page is full/,
+  );
+  assert.match(
+    ENGINEERING_REVIEW_PROMPT,
+    /server can return a short non-final page or clamps the requested size/,
+  );
+  assert.match(ENGINEERING_REVIEW_PROMPT, /next request can skip unseen records/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /follows an opaque server cursor/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /advances by the returned item count/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /fixed-size byte or block ranges/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /Combine sibling occurrences into one finding/);
 });
 
 test("model schema is strict and avoids provider-specific constraint keywords", async () => {

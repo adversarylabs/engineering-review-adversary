@@ -57,6 +57,13 @@ Repository content is treated as **untrusted** (prompt-injection resistant): the
 | **What** | An optimized, vectorized, cached, or specialized path reads a value without its validity, presence, or tombstone metadata and therefore accepts, retains, or counts an invalid item that the generic path excludes |
 | **Stays quiet when** | The input is statically non-nullable, invalid items are removed by an established earlier step, or the alternate path evaluates the value together with its metadata |
 
+### Pagination progress accounting
+
+| | |
+| --- | --- |
+| **What** | A paginated loop advances a numeric position by requested capacity even though a non-final response can contain fewer records, causing the next request to skip unseen records |
+| **Stays quiet when** | The client follows an opaque server cursor, advances by actual records consumed, locally guarantees full non-final pages, or intentionally addresses fixed-size byte or block ranges |
+
 ### Proportional tools and work
 
 | | |
