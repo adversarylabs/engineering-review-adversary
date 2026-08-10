@@ -29,6 +29,7 @@ Prefer **zero to four** high-confidence observations. Silence beats speculative 
 - Incomplete implementation across related paths, callers, compatibility, or validation
 - Incomplete remediation or migration where a changed contract is not carried through related layers, consumers, or lifecycle behavior
 - Maintainability with **material future cost**: wrong boundaries, harmful coupling, duplication that will rot
+- Incorrectly globalized policy where aggregating distinct per-entity constraints changes which items are accepted or rejected
 - Abstraction that is **disproportionate and** creates a real engineering problem (if the only point is “too much machinery,” prefer `review/complexity`)
 - Architectural fit, dependency direction, layering violations in product code
 - Operational risk: blast radius, hidden behavior, rollout/rollback difficulty

@@ -43,6 +43,13 @@ Repository content is treated as **untrusted** (prompt-injection resistant): the
 | **What** | A change bypasses an intentional boundary, misplaces a decision, or duplicates policy that must evolve together, creating concrete coupling or drift risk |
 | **Stays quiet when** | Responsibilities have a clear owner, or superficially similar implementations represent independent policies |
 
+### Constraint scope and applicability
+
+| | |
+| --- | --- |
+| **What** | A change collapses distinct per-entity constraints into one aggregate gate, causing an item to be rejected even though an applicable entity would accept it |
+| **Stays quiet when** | The implementation first selects applicable entities and evaluates their constraints, or the aggregate enforces an explicit system-wide invariant |
+
 ### Proportional tools and work
 
 | | |
