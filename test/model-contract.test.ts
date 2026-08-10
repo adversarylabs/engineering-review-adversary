@@ -15,6 +15,7 @@ test("prompt defines staff-level authority and specialist boundaries", () => {
   assert.match(ENGINEERING_REVIEW_PROMPT, /Contract integrity/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /Ownership and boundaries/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /One source of truth/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /Constraint scope/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /Proportional tools and work/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /Lifecycle and authority/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /Compatibility and operations/);
@@ -25,6 +26,22 @@ test("prompt defines staff-level authority and specialist boundaries", () => {
     ENGINEERING_REVIEW_PROMPT,
     /initConfig|g\.spec|OpenForRead|dest\.append|goroutine|context\.Background/,
   );
+});
+
+test("prompt preserves per-entity constraint semantics", () => {
+  assert.match(
+    ENGINEERING_REVIEW_PROMPT,
+    /collapses differing consumer, listener, tenant, or route policies into one aggregate gate/,
+  );
+  assert.match(
+    ENGINEERING_REVIEW_PROMPT,
+    /reject an item accepted by at least one applicable entity/,
+  );
+  assert.match(
+    ENGINEERING_REVIEW_PROMPT,
+    /first selects the applicable entities and evaluates their constraints/,
+  );
+  assert.match(ENGINEERING_REVIEW_PROMPT, /explicit system-wide invariant/);
 });
 
 test("model schema is strict and avoids provider-specific constraint keywords", async () => {
