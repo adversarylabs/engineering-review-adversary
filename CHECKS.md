@@ -50,6 +50,13 @@ Repository content is treated as **untrusted** (prompt-injection resistant): the
 | **What** | A change collapses distinct per-entity constraints into one aggregate gate, causing an item to be rejected even though an applicable entity would accept it |
 | **Stays quiet when** | The implementation first selects applicable entities and evaluates their constraints, or the aggregate enforces an explicit system-wide invariant |
 
+### Alternate-path semantic parity
+
+| | |
+| --- | --- |
+| **What** | An optimized, vectorized, cached, or specialized path reads a value without its validity, presence, or tombstone metadata and therefore accepts, retains, or counts an invalid item that the generic path excludes |
+| **Stays quiet when** | The input is statically non-nullable, invalid items are removed by an established earlier step, or the alternate path evaluates the value together with its metadata |
+
 ### Proportional tools and work
 
 | | |

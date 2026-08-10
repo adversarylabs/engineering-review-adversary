@@ -16,6 +16,7 @@ test("prompt defines staff-level authority and specialist boundaries", () => {
   assert.match(ENGINEERING_REVIEW_PROMPT, /Ownership and boundaries/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /One source of truth/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /Constraint scope/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /Alternate-path semantics/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /Proportional tools and work/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /Lifecycle and authority/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /Compatibility and operations/);
@@ -42,6 +43,24 @@ test("prompt preserves per-entity constraint semantics", () => {
     /first selects the applicable entities and evaluates their constraints/,
   );
   assert.match(ENGINEERING_REVIEW_PROMPT, /explicit system-wide invariant/);
+});
+
+test("prompt preserves value metadata on alternate paths", () => {
+  assert.match(
+    ENGINEERING_REVIEW_PROMPT,
+    /optimized, vectorized, cached, or specialized paths must preserve the generic path's observable input semantics/,
+  );
+  assert.match(
+    ENGINEERING_REVIEW_PROMPT,
+    /separates a value from validity, presence, or tombstone metadata/,
+  );
+  assert.match(
+    ENGINEERING_REVIEW_PROMPT,
+    /reads the value alone when doing so can accept, retain, or count an invalid item/,
+  );
+  assert.match(ENGINEERING_REVIEW_PROMPT, /input is statically non-nullable/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /earlier step removes invalid items/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /evaluates the value together with its metadata/);
 });
 
 test("model schema is strict and avoids provider-specific constraint keywords", async () => {
