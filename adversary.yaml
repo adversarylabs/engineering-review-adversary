@@ -1,5 +1,5 @@
 name: review/engineering
-version: 0.0.17
+version: 0.0.18
 description: Reviews proposed changes with Staff-level engineering judgment across languages.
 
 triggers:
