@@ -99,6 +99,24 @@ test("prompt requires material cost and proven independence for cheap rejections
   assert.match(ENGINEERING_REVIEW_PROMPT, /either cost or independence is merely assumed/);
 });
 
+test("prompt binds approval of mutable content to an immutable artifact identity", () => {
+  assert.match(
+    ENGINEERING_REVIEW_PROMPT,
+    /earlier review, validation, or approval is based on mutable content/,
+  );
+  assert.match(
+    ENGINEERING_REVIEW_PROMPT,
+    /pinned to the approved immutable identity or compared with it before any effect/,
+  );
+  assert.match(ENGINEERING_REVIEW_PROMPT, /re-resolution window and a reachable wrong-content outcome/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /same immutable object flows through/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /identity mismatch aborts before effects/);
+  assert.match(
+    ENGINEERING_REVIEW_PROMPT,
+    /intentionally fresh without relying on the earlier approval/,
+  );
+});
+
 test("model schema is strict and avoids provider-specific constraint keywords", async () => {
   const text = await readFile(
     new URL("../schemas/engineering-review.model.v1.schema.json", import.meta.url),

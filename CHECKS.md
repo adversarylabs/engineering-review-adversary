@@ -76,8 +76,9 @@ Repository content is treated as **untrusted** (prompt-injection resistant): the
 
 | | |
 | --- | --- |
-| **What** | Reachable ordering across asynchronous operations or state transitions can consume stale/non-authoritative state or leave the lifecycle incomplete |
-| **Stays quiet when** | State ownership and ordering are explicit, or concurrency exists without a demonstrated incorrect outcome |
+| **What** | Reachable ordering across asynchronous operations or state transitions can consume stale/non-authoritative state or leave the lifecycle incomplete; this includes approving one view of mutable content, resolving it again, and granting materially greater trust or effect to a different artifact |
+| **Evidence** | For approval binding, identify the approved revision, the later mutable resolution, and the trusted or irreversible action reached by mismatched content |
+| **Stays quiet when** | State ownership and ordering are explicit; the same immutable object flows through; a fetch is pinned to the approved revision or digest; a mismatch aborts before effects; a later read is intentionally fresh and does not rely on earlier approval; or concurrency exists without a demonstrated incorrect outcome |
 
 ### Operational risk
 
