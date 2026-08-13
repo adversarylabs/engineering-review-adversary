@@ -68,8 +68,9 @@ Repository content is treated as **untrusted** (prompt-injection resistant): the
 
 | | |
 | --- | --- |
-| **What** | A materially broad or expensive operation is used for a narrower need, or work is performed unconditionally for consumers that cannot use it |
-| **Stays quiet when** | The broader operation is required for correctness, shared by the relevant consumers, or the alleged cost is speculative micro-optimization |
+| **What** | A materially broad or expensive operation is used for a narrower need, work is performed unconditionally for consumers that cannot use it, an expensive operation precedes a cheap rejection proven independent of its result and effects, or the same derived data is retrieved repeatedly without an intervening mutation or invalidation |
+| **Evidence** | For ordering concerns, cite both the materially expensive call and the independent cheap predicate. For duplicate work, cite the repeated call sites and establish that they retrieve the same data without an intervening change |
+| **Stays quiet when** | The broader operation is required for correctness, the predicate depends on the operation's result, the operation performs required canonicalization or side effects, repeated retrieval can observe changed state, or the alleged cost or independence is speculative |
 
 ### Lifecycle and authoritative state
 

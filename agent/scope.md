@@ -32,6 +32,7 @@ Prefer **zero to four** high-confidence observations. Silence beats speculative 
 - Incorrectly globalized policy where aggregating distinct per-entity constraints changes which items are accepted or rejected
 - Alternate fast, vectorized, cached, or specialized paths that drop validity, presence, or tombstone semantics and therefore process invalid items differently from the generic path
 - Pagination loops that advance numeric positions by requested capacity despite short non-final pages, skipping records that were never consumed
+- Avoidable materially expensive work before a cheap rejection whose predicate is proven independent of that work, or repeated retrieval of the same derived data without an intervening mutation
 - Abstraction that is **disproportionate and** creates a real engineering problem (if the only point is “too much machinery,” prefer `review/complexity`)
 - Architectural fit, dependency direction, layering violations in product code
 - Operational risk: blast radius, hidden behavior, rollout/rollback difficulty
