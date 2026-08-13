@@ -80,6 +80,25 @@ test("prompt accounts for actual pagination progress", () => {
   assert.match(ENGINEERING_REVIEW_PROMPT, /Combine sibling occurrences into one finding/);
 });
 
+test("prompt requires material cost and proven independence for cheap rejections", () => {
+  assert.match(
+    ENGINEERING_REVIEW_PROMPT,
+    /materially expensive resolution, fetch, or allocation that runs before an inexpensive rejection/,
+  );
+  assert.match(
+    ENGINEERING_REVIEW_PROMPT,
+    /proves the rejecting predicate is independent of both the operation's result and its effects/,
+  );
+  assert.match(ENGINEERING_REVIEW_PROMPT, /cite both the expensive call and the cheap predicate/);
+  assert.match(
+    ENGINEERING_REVIEW_PROMPT,
+    /repeated materially expensive retrieval of the same derived data/,
+  );
+  assert.match(ENGINEERING_REVIEW_PROMPT, /no intervening mutation or invalidation/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /required canonicalization or side effects/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /either cost or independence is merely assumed/);
+});
+
 test("model schema is strict and avoids provider-specific constraint keywords", async () => {
   const text = await readFile(
     new URL("../schemas/engineering-review.model.v1.schema.json", import.meta.url),

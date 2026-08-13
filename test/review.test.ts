@@ -350,6 +350,187 @@ test("candidate gate keeps optional future concerns silent", async () => {
   assert.equal(result.opinion?.ship, true);
 });
 
+test("avoidable material work before an independent cheap rejection is reviewable", async () => {
+  const root = await mkdtemp(join(tmpdir(), "engineering-review-cheap-rejection-"));
+  await writeFile(
+    join(root, "imports.ts"),
+    "export async function importArchive(request: Request) {\n  const archive = await downloadAndExpandArchive(request);\n  if (request.headers.get('x-import-token') !== process.env.IMPORT_TOKEN) {\n    return new Response('unauthorized', { status: 401 });\n  }\n  return persistArchive(archive);\n}\n",
+  );
+  const model: ReviewModel = repositoryReviewModel(
+    ["imports.ts"],
+    async <T>(request: ModelReviewRequest) => {
+      assert.match(request.prompt, /Proportional tools and work/);
+      assert.match(request.prompt, /materially expensive resolution, fetch, or allocation/);
+      assert.match(request.prompt, /independent of both the operation's result and its effects/);
+      assert.match(request.prompt, /cite both the expensive call and the cheap predicate/);
+      return {
+        output: {
+          schemaVersion: 1,
+          overall: {
+            verdict: "significant-maintainability-concerns",
+            risk: "medium",
+            ship: false,
+            summary: "Unauthenticated requests download and expand an archive before an independent header check rejects them.",
+            primaryConcern: "the avoidable archive work before authentication",
+          },
+          observations: [{
+            id: "archive-work-before-authentication",
+            title: "Reject unauthorized imports before expanding archives",
+            category: "maintainability",
+            severity: "medium",
+            confidence: "high",
+            principle: "Material work should follow independent inexpensive rejection predicates.",
+            summary: "The handler downloads and expands an archive before checking an authentication header that does not depend on the archive.",
+            impact: "Every rejected request still incurs network transfer, archive allocation, and expansion work.",
+            recommendation: "Validate the import token before downloading and expanding the archive.",
+            tradeoffs: "Keep the existing order only if archive resolution has a required effect used by authentication.",
+            evidence: [{
+              citationId: "repo:read:1",
+              line: 2,
+              detail: "The changed handler downloads and expands the archive first.",
+            }, {
+              citationId: "repo:read:1",
+              line: 3,
+              detail: "The later rejection reads only the request header and environment token.",
+            }],
+          }],
+          strengths: [],
+        } as T,
+        provider: "fixture",
+        model: "fixture",
+      };
+    },
+  );
+
+  const result = await createApp().run({
+    input: {
+      source: { path: root },
+      change: {
+        type: "diff",
+        base_ref: "base",
+        head_ref: "head",
+        scan_mode: "changed",
+        changed_files: ["imports.ts"],
+      },
+    },
+    model,
+  });
+
+  assert.equal(result.findings.length, 1);
+  assert.equal(result.findings[0]?.evidence?.length, 2);
+  assert.equal(result.opinion?.ship, false);
+});
+
+test("duplicate material retrieval without invalidation is reviewable", async () => {
+  const root = await mkdtemp(join(tmpdir(), "engineering-review-duplicate-fetch-"));
+  await writeFile(
+    join(root, "reports.ts"),
+    "export async function renderReport(id: string) {\n  const rows = await fetchFullReport(id);\n  const title = summarize(rows);\n  const exportRows = await fetchFullReport(id);\n  return writeExport(title, exportRows);\n}\n",
+  );
+  const model: ReviewModel = repositoryReviewModel(
+    ["reports.ts"],
+    async <T>(request: ModelReviewRequest) => {
+      assert.match(request.prompt, /repeated materially expensive retrieval of the same derived data/);
+      assert.match(request.prompt, /no intervening mutation or invalidation/);
+      assert.match(request.prompt, /cite the duplicate call sites/);
+      return {
+        output: {
+          schemaVersion: 1,
+          overall: {
+            verdict: "significant-maintainability-concerns",
+            risk: "medium",
+            ship: false,
+            summary: "The report is fully fetched twice without an intervening state change.",
+            primaryConcern: "the duplicate full report retrieval",
+          },
+          observations: [{
+            id: "duplicate-full-report-fetch",
+            title: "Reuse the full report retrieval",
+            category: "maintainability",
+            severity: "medium",
+            confidence: "high",
+            principle: "Material derived data should not be retrieved repeatedly without invalidation.",
+            summary: "Both calls fetch the same full report, and the code between them only derives a title.",
+            impact: "Each export repeats the report query and transfer cost.",
+            recommendation: "Use the first report value for both summarization and export.",
+            tradeoffs: "Fetch again only if the export intentionally requires a newer snapshot.",
+            evidence: [{
+              citationId: "repo:read:1",
+              line: 2,
+              detail: "The report is fetched for summarization.",
+            }, {
+              citationId: "repo:read:1",
+              line: 4,
+              detail: "The unchanged report is fetched again for export.",
+            }],
+          }],
+          strengths: [],
+        } as T,
+        provider: "fixture",
+        model: "fixture",
+      };
+    },
+  );
+
+  const result = await createApp().run({
+    input: { source: { path: root } },
+    model,
+  });
+
+  assert.equal(result.findings.length, 1);
+  assert.equal(result.findings[0]?.evidence?.length, 2);
+  assert.equal(result.opinion?.ship, false);
+});
+
+test("expensive work stays quiet when the rejection depends on its result", async () => {
+  const root = await mkdtemp(join(tmpdir(), "engineering-review-dependent-rejection-"));
+  await writeFile(
+    join(root, "imports.ts"),
+    "export async function importArchive(request: Request) {\n  const archive = await downloadAndExpandArchive(request);\n  if (!archive.manifest.isCompatible) {\n    return new Response('unsupported archive', { status: 422 });\n  }\n  return persistArchive(archive);\n}\n",
+  );
+  const model: ReviewModel = repositoryReviewModel(
+    ["imports.ts"],
+    async <T>(request: ModelReviewRequest) => {
+      assert.match(request.prompt, /predicate consumes a value produced by the operation/);
+      assert.match(request.prompt, /required canonicalization or side effects/);
+      assert.match(request.prompt, /cost or independence is merely assumed/);
+      return {
+        output: {
+          schemaVersion: 1,
+          overall: {
+            verdict: "well-engineered",
+            risk: "none",
+            ship: true,
+            summary: "Compatibility is evaluated from the resolved archive manifest, so the operation must precede the rejection.",
+            primaryConcern: "",
+          },
+          observations: [],
+          strengths: [],
+        } as T,
+        provider: "fixture",
+        model: "fixture",
+      };
+    },
+  );
+
+  const result = await createApp().run({
+    input: {
+      source: { path: root },
+      change: {
+        type: "diff",
+        base_ref: "base",
+        head_ref: "head",
+        scan_mode: "changed",
+        changed_files: ["imports.ts"],
+      },
+    },
+    model,
+  });
+
+  assert.deepEqual(result.findings, []);
+  assert.equal(result.opinion?.ship, true);
+});
+
 test("change cohesion guidance supports one evidence-backed independent-change finding", async () => {
   const root = await mkdtemp(join(tmpdir(), "engineering-review-cohesion-"));
   await writeFile(
