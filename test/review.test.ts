@@ -656,3 +656,131 @@ test("cohesive multi-file contract change stays quiet", async () => {
   assert.deepEqual(result.findings, []);
   assert.equal(result.opinion?.ship, true);
 });
+
+test("approval followed by a mutable re-fetch before trusted publication is reviewable", async () => {
+  const root = await mkdtemp(join(tmpdir(), "engineering-review-approved-revision-"));
+  await writeFile(
+    join(root, "adopt.ts"),
+    "export async function adopt(prNumber: number) {\n  const reviewed = await readPullMetadata(prNumber);\n  await confirmReview({ headOid: reviewed.headOid, files: reviewed.files });\n  const fetched = await fetchCurrentRef(`refs/pull/${prNumber}/head`);\n  await publishToTrustedCI(fetched.oid);\n}\n",
+  );
+  const model: ReviewModel = repositoryReviewModel(
+    ["adopt.ts"],
+    async <T>(request: ModelReviewRequest) => {
+      assert.match(request.prompt, /Lifecycle and authority/);
+      assert.match(request.prompt, /approved immutable identity/);
+      assert.match(request.prompt, /re-resolution window and a reachable wrong-content outcome/);
+      return {
+        output: {
+          schemaVersion: 1,
+          overall: {
+            verdict: "high-operational-risk",
+            risk: "high",
+            ship: false,
+            summary: "The adoption flow can publish a different pull-request revision than the one the maintainer approved.",
+            primaryConcern: "the unbound pull-request approval",
+          },
+          observations: [{
+            id: "approval-not-bound-to-fetched-revision",
+            title: "Bind adoption approval to the fetched revision",
+            category: "risk",
+            severity: "high",
+            confidence: "high",
+            principle: "Approval of mutable content must remain bound to an immutable identity until the trusted action occurs.",
+            summary: "The maintainer approves one head OID, but publication uses a later fetch of the mutable pull-request ref without comparing identities.",
+            impact: "A contributor can update the ref after confirmation and have unreviewed content published to trusted CI.",
+            recommendation: "Fetch the approved OID directly, or compare the fetched OID with reviewed.headOid and abort before publication on mismatch.",
+            tradeoffs: "A mismatch requires the maintainer to review and confirm the new revision, which is the intended trust boundary.",
+            evidence: [{
+              citationId: "repo:read:1",
+              line: 3,
+              detail: "Confirmation records the head OID from the earlier metadata read.",
+            }, {
+              citationId: "repo:read:1",
+              line: 4,
+              detail: "The script later resolves the mutable pull-request head ref.",
+            }, {
+              citationId: "repo:read:1",
+              line: 5,
+              detail: "The newly fetched OID is published to the trusted environment without an identity check.",
+            }],
+          }],
+          strengths: [],
+        } as T,
+        provider: "fixture",
+        model: "fixture",
+      };
+    },
+  );
+
+  const result = await createApp().run({
+    input: {
+      source: { path: root },
+      change: {
+        type: "diff",
+        base_ref: "base",
+        head_ref: "head",
+        scan_mode: "changed",
+        changed_files: ["adopt.ts"],
+      },
+    },
+    model,
+  });
+
+  assert.equal(result.findings.length, 1);
+  assert.equal(result.findings[0]?.evidence?.length, 3);
+  assert.equal(result.opinion?.ship, false);
+});
+
+test("identity comparison before trusted publication keeps mutable re-fetch quiet", async () => {
+  const root = await mkdtemp(join(tmpdir(), "engineering-review-pinned-approval-"));
+  await writeFile(
+    join(root, "adopt.ts"),
+    "export async function adopt(prNumber: number) {\n  const reviewed = await readPullMetadata(prNumber);\n  await confirmReview({ headOid: reviewed.headOid, files: reviewed.files });\n  const fetched = await fetchCurrentRef(`refs/pull/${prNumber}/head`);\n  if (fetched.oid !== reviewed.headOid) throw new Error('revision changed');\n  await publishToTrustedCI(fetched.oid);\n}\n",
+  );
+  const model: ReviewModel = repositoryReviewModel(
+    ["adopt.ts"],
+    async <T>(request: ModelReviewRequest) => {
+      assert.match(request.prompt, /identity mismatch aborts before effects/);
+      return {
+        output: {
+          schemaVersion: 1,
+          overall: {
+            verdict: "well-engineered",
+            risk: "none",
+            ship: true,
+            summary: "The fetched revision is checked against the approved identity before trusted publication.",
+            primaryConcern: "",
+          },
+          observations: [],
+          strengths: [{
+            summary: "The identity check preserves the confirmation boundary across the mutable fetch.",
+            evidence: [{
+              citationId: "repo:read:1",
+              line: 5,
+              detail: "A changed revision aborts before publication.",
+            }],
+          }],
+        } as T,
+        provider: "fixture",
+        model: "fixture",
+      };
+    },
+  );
+
+  const result = await createApp().run({
+    input: {
+      source: { path: root },
+      change: {
+        type: "diff",
+        base_ref: "base",
+        head_ref: "head",
+        scan_mode: "changed",
+        changed_files: ["adopt.ts"],
+      },
+    },
+    model,
+  });
+
+  assert.deepEqual(result.findings, []);
+  assert.equal(result.opinion?.ship, true);
+});
