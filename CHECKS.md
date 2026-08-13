@@ -68,9 +68,9 @@ Repository content is treated as **untrusted** (prompt-injection resistant): the
 
 | | |
 | --- | --- |
-| **What** | A materially broad or expensive operation is used for a narrower need, work is performed unconditionally for consumers that cannot use it, an expensive operation precedes a cheap rejection proven independent of its result and effects, or the same derived data is retrieved repeatedly without an intervening mutation or invalidation |
-| **Evidence** | For ordering concerns, cite both the materially expensive call and the independent cheap predicate. For duplicate work, cite the repeated call sites and establish that they retrieve the same data without an intervening change |
-| **Stays quiet when** | The broader operation is required for correctness, the predicate depends on the operation's result, the operation performs required canonicalization or side effects, repeated retrieval can observe changed state, or the alleged cost or independence is speculative |
+| **What** | A materially broad or expensive operation is used for a narrower need, work is performed unconditionally for consumers that cannot use it, an expensive operation precedes a cheap rejection proven independent of its result and effects, the same derived data is retrieved repeatedly without an intervening mutation or invalidation, or materially costly writes are kept separate even though the current code proves they can be one mutation without changing semantics |
+| **Evidence** | For ordering concerns, cite both the materially expensive call and the independent cheap predicate. For duplicate retrieval, cite the repeated call sites and absence of intervening change. For coalescible writes, cite both writes, their same logical target and current endpoint/subresource/transaction boundary, their common pre-write state, the supported combine operation, and the hot-path or scale evidence |
+| **Stays quiet when** | The broader operation is required for correctness; a predicate or later write depends on an earlier result or refreshed state; a compare/test/resourceVersion/timestamp/CAS preserves concurrency; writes have distinct targets, boundaries, transactions, side effects, audit, failure, or retry semantics; combine capability or material cost is unproven; or coalescing depends only on a future design |
 
 ### Lifecycle and authoritative state
 

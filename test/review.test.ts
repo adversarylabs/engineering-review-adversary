@@ -784,3 +784,149 @@ test("identity comparison before trusted publication keeps mutable re-fetch quie
   assert.deepEqual(result.findings, []);
   assert.equal(result.opinion?.ship, true);
 });
+
+test("material same-target writes that preserve one pre-write state are reviewable", async () => {
+  const root = await mkdtemp(join(tmpdir(), "engineering-review-coalescible-writes-"));
+  await writeFile(
+    join(root, "reconcile.ts"),
+    "export async function reconcileAll(client, activeApps, nextStatusById) {\n  for (const app of activeApps) {\n    const target = `/applications/${app.id}`;\n    await client.mergePatch(target, { status: nextStatusById[app.id] });\n    await client.mergePatch(target, { metadata: { annotations: { refresh: null } } });\n  }\n}\n",
+  );
+  const model: ReviewModel = repositoryReviewModel(
+    ["reconcile.ts"],
+    async <T>(request: ModelReviewRequest) => {
+      assert.match(request.prompt, /material hot-path or scale cost/);
+      assert.match(request.prompt, /same logical target and current endpoint/);
+      assert.match(request.prompt, /one supported atomic operation can express both changes/);
+      return {
+        output: {
+          schemaVersion: 1,
+          overall: {
+            verdict: "ready-with-minor-improvements",
+            risk: "low",
+            ship: true,
+            summary: "The reconcile path is correct, but it performs two merge patches where one expresses both changes.",
+            primaryConcern: "",
+          },
+          observations: [{
+            id: "coalesce-reconcile-writes",
+            title: "Coalesce the same-target reconcile writes",
+            category: "maintainability",
+            severity: "low",
+            confidence: "high",
+            principle: "Material hot-path work should use the narrowest operation that preserves its semantics.",
+            summary: "Every reconciliation sends two merge patches to the same target from the same pre-write state even though one merge patch can carry both changes.",
+            impact: "The duplicate request adds avoidable API-server traffic for every active application on every reconciliation pass.",
+            recommendation: "Send one merge patch containing both the status and annotation removal.",
+            tradeoffs: "Keep separate writes if the current API moves status to a distinct subresource or requires independent failure handling.",
+            evidence: [{
+              citationId: "repo:read:1",
+              line: 2,
+              detail: "The reconcile operation performs the mutation pair for every active application.",
+            }, {
+              citationId: "repo:read:1",
+              line: 4,
+              detail: "The first merge patch updates status on the shared target.",
+            }, {
+              citationId: "repo:read:1",
+              line: 5,
+              detail: "The second merge patch updates metadata on the same target with the same merge operation.",
+            }],
+          }],
+          strengths: [],
+        } as T,
+        provider: "fixture",
+        model: "fixture",
+      };
+    },
+  );
+
+  const result = await createApp().run({
+    input: {
+      source: { path: root },
+      change: {
+        type: "diff",
+        base_ref: "base",
+        head_ref: "head",
+        scan_mode: "changed",
+        changed_files: ["reconcile.ts"],
+      },
+    },
+    model,
+  });
+
+  assert.equal(result.findings.length, 1);
+  assert.equal(result.findings[0]?.evidence?.length, 3);
+  assert.equal(result.opinion?.ship, true);
+});
+
+test("separate mutations stay quiet when coalescing is not proven safe or material", async () => {
+  const cases = [{
+    name: "guard",
+    source: "export async function reconcile(client, app, nextStatus) {\n  await client.mergePatch(`/applications/${app.id}`, { status: nextStatus });\n  await client.jsonPatch(`/applications/${app.id}`, [{ op: 'test', path: '/metadata/annotations/refresh-at', value: app.refreshAt }, { op: 'remove', path: '/metadata/annotations/refresh' }]);\n}\n",
+    reason: "The timestamp test preserves a concurrent refresh request.",
+  }, {
+    name: "subresource",
+    source: "export async function reconcile(client, app, nextStatus) {\n  await client.patch(`/applications/${app.id}/status`, { status: nextStatus });\n  await client.patch(`/applications/${app.id}`, { metadata: { annotations: { refresh: null } } });\n}\n",
+    reason: "Status and metadata use distinct current API boundaries.",
+  }, {
+    name: "fresh-state",
+    source: "export async function reconcile(client, app, nextStatus) {\n  await client.mergePatch(`/applications/${app.id}`, { status: nextStatus });\n  const current = await client.get(`/applications/${app.id}`);\n  await client.mergePatch(`/applications/${app.id}`, { observedVersion: current.version });\n}\n",
+    reason: "The later mutation intentionally depends on refreshed state.",
+  }, {
+    name: "distinct-side-effect",
+    source: "export async function update(store, audit, account, nextState) {\n  await store.updateAccount(account.id, nextState);\n  await audit.append({ accountId: account.id, state: nextState });\n}\n",
+    reason: "The durable audit record has separate ownership and failure semantics.",
+  }, {
+    name: "unproven-cost",
+    source: "export async function repairOne(client, id) {\n  await client.mergePatch(`/applications/${id}`, { status: 'ready' });\n  await client.mergePatch(`/applications/${id}`, { repaired: true });\n}\n",
+    reason: "The source establishes neither a hot path nor material scale.",
+  }];
+
+  for (const sample of cases) {
+    const root = await mkdtemp(join(tmpdir(), `engineering-review-writes-${sample.name}-`));
+    await writeFile(join(root, "change.ts"), sample.source);
+    const model: ReviewModel = repositoryReviewModel(
+      ["change.ts"],
+      async <T>(request: ModelReviewRequest) => {
+        assert.match(request.prompt, /compare, test, resource version, timestamp, or CAS/);
+        assert.match(request.prompt, /distinct side effects, audit, transaction, failure, or retry semantics/);
+        assert.match(request.prompt, /depends on the first response or refreshed state/);
+        assert.match(request.prompt, /targets or current boundaries differ/);
+        assert.match(request.prompt, /material cost, independence, or combine capability is assumed/);
+        return {
+          output: {
+            schemaVersion: 1,
+            overall: {
+              verdict: "well-engineered",
+              risk: "none",
+              ship: true,
+              summary: sample.reason,
+              primaryConcern: "",
+            },
+            observations: [],
+            strengths: [],
+          } as T,
+          provider: "fixture",
+          model: "fixture",
+        };
+      },
+    );
+
+    const result = await createApp().run({
+      input: {
+        source: { path: root },
+        change: {
+          type: "diff",
+          base_ref: "base",
+          head_ref: "head",
+          scan_mode: "changed",
+          changed_files: ["change.ts"],
+        },
+      },
+      model,
+    });
+
+    assert.deepEqual(result.findings, [], sample.name);
+    assert.equal(result.opinion?.ship, true, sample.name);
+  }
+});
