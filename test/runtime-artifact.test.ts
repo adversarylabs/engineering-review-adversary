@@ -50,7 +50,7 @@ test("the published runtime executes without node_modules", async () => {
   const runtime = await import(pathToFileURL(entrypoint).href) as {
     createApp(): {
       run(options: { input: unknown; model: ReviewModel }): Promise<{
-        adversary: { name: string };
+        adversary: { name: string; version?: string };
         findings: unknown[];
       }>;
     };
@@ -79,5 +79,6 @@ test("the published runtime executes without node_modules", async () => {
   });
 
   assert.equal(result.adversary.name, "engineering-review");
+  assert.equal(result.adversary.version, "0.0.24");
   assert.deepEqual(result.findings, []);
 });
