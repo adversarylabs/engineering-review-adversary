@@ -32,7 +32,7 @@ Prefer **zero to four** high-confidence observations. Silence beats speculative 
 - Incorrectly globalized policy where aggregating distinct per-entity constraints changes which items are accepted or rejected
 - Alternate fast, vectorized, cached, or specialized paths that drop validity, presence, or tombstone semantics and therefore process invalid items differently from the generic path
 - Pagination loops that advance numeric positions by requested capacity despite short non-final pages, skipping records that were never consumed
-- Avoidable materially expensive work before a cheap rejection whose predicate is proven independent of that work, or repeated retrieval of the same derived data without an intervening mutation
+- Avoidable materially expensive work before a cheap rejection whose predicate is proven independent of that work, repeated retrieval of the same derived data without an intervening mutation, or materially costly mutation writes that source evidence proves can be combined on the same current target and boundary without losing concurrency, state, side-effect, transaction, failure, or retry semantics
 - Approval or validation of mutable content followed by re-resolving it before a materially trusted or irreversible action, without pinning or checking the artifact's immutable identity
 - Abstraction that is **disproportionate and** creates a real engineering problem (if the only point is “too much machinery,” prefer `review/complexity`)
 - Architectural fit, dependency direction, layering violations in product code

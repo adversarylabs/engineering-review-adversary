@@ -99,6 +99,25 @@ test("prompt requires material cost and proven independence for cheap rejections
   assert.match(ENGINEERING_REVIEW_PROMPT, /either cost or independence is merely assumed/);
 });
 
+test("prompt requires proof before treating mutation writes as coalescible", () => {
+  assert.match(ENGINEERING_REVIEW_PROMPT, /material hot-path or scale cost/);
+  assert.match(
+    ENGINEERING_REVIEW_PROMPT,
+    /same logical target and current endpoint, subresource, or transaction boundary/,
+  );
+  assert.match(ENGINEERING_REVIEW_PROMPT, /derive from the same pre-write state/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /one supported atomic operation can express both changes/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /resource version, timestamp, or CAS preserves concurrency/);
+  assert.match(
+    ENGINEERING_REVIEW_PROMPT,
+    /distinct side effects, audit, transaction, failure, or retry semantics/,
+  );
+  assert.match(ENGINEERING_REVIEW_PROMPT, /depends on the first response or refreshed state/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /targets or current boundaries differ/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /combining is merely planned for a future boundary/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /combine capability is assumed/);
+});
+
 test("prompt binds approval of mutable content to an immutable artifact identity", () => {
   assert.match(
     ENGINEERING_REVIEW_PROMPT,
