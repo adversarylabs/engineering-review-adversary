@@ -310,6 +310,125 @@ test("generalized contract guidance supports one cross-layer finding", async () 
   assert.equal(result.opinion?.ship, false);
 });
 
+test("release-disabled framing checks before partial decoding are reviewable", async () => {
+  const root = await mkdtemp(join(tmpdir(), "engineering-review-decoder-framing-"));
+  await writeFile(
+    join(root, "state.rs"),
+    `pub fn merge_persisted_state(bytes: &[u8]) -> Result<u64, DecodeError> {
+    debug_assert_eq!(bytes.len() % 8, 0);
+    let mut total = 0;
+    for chunk in bytes.chunks_exact(8) {
+        total += u64::from_le_bytes(chunk.try_into().unwrap());
+    }
+    Ok(total)
+}
+`,
+  );
+  const model: ReviewModel = repositoryReviewModel(
+    ["state.rs"],
+    async <T>(request: ModelReviewRequest) => {
+      assert.match(request.prompt, /Production decoder framing/);
+      assert.match(request.prompt, /assertion disabled in production/);
+      assert.match(request.prompt, /tolerant partial consumer/);
+      return {
+        output: {
+          schemaVersion: 1,
+          overall: {
+            verdict: "incomplete-implementation",
+            risk: "medium",
+            ship: false,
+            summary: "Malformed persisted state is accepted as a successful partial decode in production builds.",
+            primaryConcern: "the release-only framing gap",
+          },
+          observations: [{
+            id: "release-disabled-framing-check",
+            title: "Reject malformed persisted-state framing in production",
+            category: "correctness",
+            severity: "medium",
+            confidence: "high",
+            principle: "Production decoders must enforce framing invariants before tolerant partial consumption.",
+            summary: "The decoder checks eight-byte alignment only in debug builds, while the production iterator drops trailing bytes.",
+            impact: "A malformed persisted state can be partially merged and returned as successful instead of being rejected.",
+            recommendation: "Return an error when the byte length is not aligned before iterating over complete frames.",
+            tradeoffs: "The debug assertion can remain as documentation after the production check is added.",
+            evidence: [{
+              citationId: "repo:read:1",
+              line: 2,
+              detail: "The framing invariant is enforced only by a debug assertion.",
+            }, {
+              citationId: "repo:read:1",
+              line: 4,
+              detail: "The decoder consumes only exact chunks and does not inspect the remainder.",
+            }],
+          }],
+          strengths: [],
+        } as T,
+        provider: "fixture",
+        model: "fixture",
+      };
+    },
+  );
+
+  const result = await createApp().run({
+    input: { source: { path: root } },
+    model,
+  });
+
+  assert.equal(result.findings.length, 1);
+  assert.equal(result.findings[0]?.evidence?.length, 2);
+  assert.equal(result.opinion?.ship, false);
+});
+
+test("production framing validation keeps tolerant chunk decoding quiet", async () => {
+  const root = await mkdtemp(join(tmpdir(), "engineering-review-valid-framing-"));
+  await writeFile(
+    join(root, "state.rs"),
+    `pub fn merge_persisted_state(bytes: &[u8]) -> Result<u64, DecodeError> {
+    if bytes.len() % 8 != 0 {
+        return Err(DecodeError::InvalidFrameLength(bytes.len()));
+    }
+    debug_assert_eq!(bytes.len() % 8, 0);
+    let mut total = 0;
+    for chunk in bytes.chunks_exact(8) {
+        total += u64::from_le_bytes(chunk.try_into().unwrap());
+    }
+    Ok(total)
+}
+`,
+  );
+  const model: ReviewModel = repositoryReviewModel(
+    ["state.rs"],
+    async <T>(request: ModelReviewRequest) => {
+      assert.match(request.prompt, /production validation already rejects malformed framing/);
+      assert.match(request.prompt, /debug assertion only duplicates a real check/);
+      return {
+        output: {
+          schemaVersion: 1,
+          overall: {
+            verdict: "well-engineered",
+            risk: "none",
+            ship: true,
+            summary: "The decoder rejects malformed framing before exact-chunk iteration in every build mode.",
+            primaryConcern: "",
+          },
+          observations: [],
+          strengths: [],
+        } as T,
+        provider: "fixture",
+        model: "fixture",
+      };
+    },
+  );
+
+  const result = await createApp().run({
+    input: { source: { path: root } },
+    model,
+  });
+
+  assert.deepEqual(result.findings, []);
+  assert.equal(result.opinion?.ship, true);
+});
+
 test("candidate gate keeps optional future concerns silent", async () => {
   const root = await mkdtemp(join(tmpdir(), "engineering-review-gate-"));
   await writeFile(

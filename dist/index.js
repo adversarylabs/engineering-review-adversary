@@ -17378,6 +17378,7 @@ Review software engineering across languages:
 
 Engineering principles:
 - Contract integrity: when a change alters a shared or public contract, follow it through related representations, callers, adapters, sibling paths, compatibility boundaries, and supported state transitions. Report one incomplete engineering story, not one issue per layer.
+- Production decoder framing: when changed code decodes serialized, persisted, or externally supplied state, flag a required framing or alignment invariant enforced only by an assertion disabled in production when a downstream consumer is proven to ignore or truncate malformed remainder and still return success. Require a reachable malformed-input boundary and cite both the release-disabled check and the tolerant partial consumer. Stay quiet when construction is proven trusted, production validation already rejects malformed framing, the consumer exposes or rejects any remainder, or the debug assertion only duplicates a real check.
 - Ownership and boundaries: preserve intentional abstraction boundaries and put decisions with the component that owns the relevant contract. Report only when bypassing or misplacing responsibility creates concrete coupling, inconsistency, or evolution cost.
 - One source of truth: flag duplicated policy or behavior when the copies must evolve together and the change demonstrates a realistic drift hazard. Similar-looking code that represents independent policies is not a DRY violation.
 - Constraint scope: preserve the identity and applicability of per-entity constraints. Flag a change that collapses differing consumer, listener, tenant, or route policies into one aggregate gate when that gate can reject an item accepted by at least one applicable entity. Stay quiet when the code first selects the applicable entities and evaluates their constraints, or when the aggregate represents an explicit system-wide invariant.
@@ -17691,7 +17692,7 @@ function hasDegenerateRepetition(text) {
 function createApp() {
   const app = new Adversary({
     name: "engineering-review",
-    version: "0.0.24",
+    version: "0.0.25",
     review: {
       maximumFindings: 4,
       minimumConfidence: "medium"
