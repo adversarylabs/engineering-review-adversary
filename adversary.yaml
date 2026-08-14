@@ -40,7 +40,13 @@ triggers:
     - "*.md"
     - "**/*.md"
     - "**/integration/**/00-setup"
-    - "**/integration/**/99-teardown"
+    - "**/integration/**/01-start-server"
+    - "**/integration/**/02-bootstrap-agent"
+    - "**/integration/**/03-start-agent"
+    - "**/integration/**/04-submit-job"
+    - "**/integration/**/05-create-entry"
+    - "**/integration/**/06-verify-fetch"
+    - "**/integration/**/teardown"
 
 detection:
   files:
@@ -79,7 +85,13 @@ detection:
     - "*.md"
     - "**/*.md"
     - "**/integration/**/00-setup"
-    - "**/integration/**/99-teardown"
+    - "**/integration/**/01-start-server"
+    - "**/integration/**/02-bootstrap-agent"
+    - "**/integration/**/03-start-agent"
+    - "**/integration/**/04-submit-job"
+    - "**/integration/**/05-create-entry"
+    - "**/integration/**/06-verify-fetch"
+    - "**/integration/**/teardown"
 
 runtime:
   name: node

@@ -36,7 +36,13 @@ export const TRIGGER_PATTERNS = [
   "*.md",
   "**/*.md",
   "**/integration/**/00-setup",
-  "**/integration/**/99-teardown",
+  "**/integration/**/01-start-server",
+  "**/integration/**/02-bootstrap-agent",
+  "**/integration/**/03-start-agent",
+  "**/integration/**/04-submit-job",
+  "**/integration/**/05-create-entry",
+  "**/integration/**/06-verify-fetch",
+  "**/integration/**/teardown",
 ] as const;
 
 export const SOURCE_PATTERNS = [
@@ -94,7 +100,7 @@ export function isReviewableSource(path: string): boolean {
   if (/\.github\/workflows\/.*\.ya?ml$/i.test(normalized)) return true;
   if (
     segments.includes("integration") &&
-    /^(?:00-setup|99-teardown)$/.test(name)
+    /^(?:00-setup|01-start-server|02-bootstrap-agent|03-start-agent|04-submit-job|05-create-entry|06-verify-fetch|teardown)$/.test(name)
   ) {
     return true;
   }

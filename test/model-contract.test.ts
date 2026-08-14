@@ -138,14 +138,15 @@ test("prompt requires proof before treating mutation writes as coalescible", () 
 });
 
 test("prompt requires cross-file proof for host-destructive integration harnesses", () => {
-  assert.match(ENGINEERING_REVIEW_PROMPT, /directly runnable on a developer host/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /directly runnable on a developer or persistent runner host/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /documented or default local entrypoint/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /privileged persistent host mutation/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /same reachable harness controls live services or global workloads/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /no dominating boundary before the first effect/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /Cite the local entrypoint, the persistent host effect, and the service or global-workload effect/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /Dockerfile\/image-build effects/);
-  assert.match(ENGINEERING_REVIEW_PROMPT, /ephemeral CI job/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /hosted ephemeral CI runners/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /self-hosted runner label does not prove disposable containment/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /disposable container, VM, chroot, rootfs, or filesystem namespace/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /test-owned temporary storage or mocks/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /inert documentation, fixtures, or uninvoked helpers/);
@@ -204,6 +205,13 @@ test("model request delegates bounded repository retrieval to the SDK", () => {
     "**/Makefile",
     "**/*.md",
     "**/integration/**/00-setup",
+    "**/integration/**/01-start-server",
+    "**/integration/**/02-bootstrap-agent",
+    "**/integration/**/03-start-agent",
+    "**/integration/**/04-submit-job",
+    "**/integration/**/05-create-entry",
+    "**/integration/**/06-verify-fetch",
+    "**/integration/**/teardown",
     "Dockerfile",
     "Vagrantfile",
     ".github/workflows/**/*.yaml",

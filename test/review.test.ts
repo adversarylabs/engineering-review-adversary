@@ -1069,36 +1069,48 @@ test("a locally runnable host-destructive integration harness is reviewable as o
   await mkdir(suite, { recursive: true });
   await writeFile(
     join(root, "Makefile"),
-    ".PHONY: integration\nintegration:\n\ttest/integration/suites/slurm-x509/00-setup\n\ttest/integration/suites/slurm-x509/99-teardown\n",
+    "integration:\nifeq ($(os1), windows)\n\t$(error Integration tests are not supported on windows)\nelse\n\t$(E)$(go_path) IGNORE_SUITES='$(ignore_suites)' ./test/integration/test.sh $(SUITES)\nendif\n",
   );
   await writeFile(
-    join(root, "README.md"),
-    "# Integration tests\nRun `make integration` on a development machine to execute all integration suites.\n",
+    join(root, "test", "integration", "test.sh"),
+    "#!/bin/bash\n\nDIR=\"$( cd \"$( dirname \"${BASH_SOURCE[0]}\" )\" && pwd )\"\ncd \"${DIR}\" || fail-now \"Unable to change to script directory\"\n. ./common\n\nif [[ -z \"${SUITES}\" ]]; then\n   SUITES=suites/*\nfi\n\nif [[ -n $1 ]]; then\n        SUITES=$@\nfi\n\nfor suite in $SUITES; do\n    ./test-one.sh \"${suite}\"\ndone\n",
+  );
+  await writeFile(
+    join(suite, "README.md"),
+    "# slurm-x509 suite\n\n## Description\n\nThis suite validates the agent `slurm` WorkloadAttestor end to end against a real single-node Slurm cluster.\n\nSlurm's cgroup/v2 support requires a host systemd + dbus + cgroup v2. This suite runs Slurm 23.11 directly on the host, while SPIRE runs in containers as in the other suites.\n\n- `slurmctld` + `slurmd` + `munged` run on the host (native systemd/cgroup v2).\n- `spire-server` runs in a container.\n",
   );
   await writeFile(
     join(suite, "00-setup"),
-    "#!/bin/sh\nsudo install ./spire-agent /usr/local/bin/spire-agent\nsudo cp ./slurm.conf /etc/slurm/slurm.conf\nsudo systemctl restart munge slurmctld slurmd\n",
+    "#!/bin/bash\n\nset -e\n\nlog-debug \"extracting spire-agent binary to the host...\"\ncid=$(docker create spire-agent:latest-local)\ndocker cp \"${cid}:/opt/spire/bin/spire-agent\" ./spire-agent\ndocker rm \"${cid}\" >/dev/null\nsudo install -m 0755 ./spire-agent /usr/local/bin/spire-agent\n\nsudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \\\n    slurm-wlm munge\n\nsudo install -m 0644 slurm.conf.rendered /etc/slurm/slurm.conf\nsudo install -m 0644 conf/slurm/cgroup.conf /etc/slurm/cgroup.conf\n\nsudo systemctl restart munge\nsudo systemctl restart slurmctld\nsudo systemctl restart slurmd\n",
   );
   await writeFile(
-    join(suite, "99-teardown"),
-    "#!/bin/sh\nsudo scancel -a\nsudo systemctl stop slurmd slurmctld munge\n",
+    join(suite, "01-start-server"),
+    "#!/bin/bash\n\ndocker-spire-server-up spire-server\n",
+  );
+  await writeFile(
+    join(suite, "teardown"),
+    "#!/bin/bash\n\nif [ -z \"${SUCCESS}\" ]; then\n    docker compose logs || true\nfi\n\ndocker-down\n\n# Restore host state (the runner is shared across suites).\nsudo scancel -a >/dev/null 2>&1 || true\nsudo systemctl stop slurmd slurmctld munge >/dev/null 2>&1 || true\nsudo rm -rf /tmp/slurm-spire-sockets /tmp/slurm-spire-jobs || true\n",
   );
 
   const model: ReviewModel = repositoryReviewModel(
     [
       "Makefile",
-      "README.md",
+      "test/integration/test.sh",
+      "test/integration/suites/slurm-x509/README.md",
       "test/integration/suites/slurm-x509/00-setup",
-      "test/integration/suites/slurm-x509/99-teardown",
+      "test/integration/suites/slurm-x509/01-start-server",
+      "test/integration/suites/slurm-x509/teardown",
     ],
     async <T>(request: ModelReviewRequest) => {
       const input = JSON.stringify(request.input);
       assert.match(request.prompt, /Host-destructive test harnesses/);
       assert.match(request.prompt, /all of the following/);
-      assert.match(input, /make integration/);
+      assert.match(input, /test\/integration\/test\.sh/);
+      assert.match(input, /SUITES=suites\/\*/);
+      assert.match(input, /runs Slurm 23\.11 directly on the host/);
       assert.match(input, /\/usr\/local\/bin\/spire-agent/);
       assert.match(input, /\/etc\/slurm\/slurm\.conf/);
-      assert.match(input, /systemctl restart munge slurmctld slurmd/);
+      assert.match(input, /systemctl restart munge/);
       assert.match(input, /scancel -a/);
       return {
         output: {
@@ -1123,23 +1135,23 @@ test("a locally runnable host-destructive integration harness is reviewable as o
             tradeoffs: "A disposable VM may be required when the suite needs the real host cgroup hierarchy.",
             evidence: [{
               citationId: "repo:read:1",
-              line: 2,
-              detail: "The default local integration target directly reaches the suite setup and teardown.",
+              line: 5,
+              detail: "The local integration target reaches the default suite runner.",
             }, {
               citationId: "repo:read:2",
-              line: 2,
-              detail: "The repository documents the target as runnable on a development machine.",
-            }, {
-              citationId: "repo:read:3",
-              line: 2,
-              detail: "Setup installs a binary into the host's persistent executable path.",
-            }, {
-              citationId: "repo:read:3",
-              line: 4,
-              detail: "The same setup restarts the live Slurm and munge services.",
+              line: 8,
+              detail: "With no explicit suite selection, the runner executes every suite directory.",
             }, {
               citationId: "repo:read:4",
-              line: 2,
+              line: 9,
+              detail: "Setup installs a binary into the host's persistent executable path.",
+            }, {
+              citationId: "repo:read:4",
+              line: 17,
+              detail: "The same setup restarts the live Slurm and munge services.",
+            }, {
+              citationId: "repo:read:6",
+              line: 10,
               detail: "Teardown cancels all Slurm jobs, not only test-owned jobs.",
             }],
           }],
@@ -1161,9 +1173,11 @@ test("a locally runnable host-destructive integration harness is reviewable as o
         scan_mode: "changed",
         changed_files: [
           "Makefile",
-          "README.md",
+          "test/integration/test.sh",
+          "test/integration/suites/slurm-x509/README.md",
           "test/integration/suites/slurm-x509/00-setup",
-          "test/integration/suites/slurm-x509/99-teardown",
+          "test/integration/suites/slurm-x509/01-start-server",
+          "test/integration/suites/slurm-x509/teardown",
         ],
       },
     },
@@ -1180,43 +1194,78 @@ test("a dominating CI refusal keeps the same integration effects quiet", async (
   const root = await mkdtemp(join(tmpdir(), "engineering-review-ci-gated-harness-"));
   const suite = join(root, "test", "integration", "suites", "slurm-x509");
   await mkdir(suite, { recursive: true });
+  await mkdir(join(root, ".github", "workflows"), { recursive: true });
   await writeFile(
     join(root, "Makefile"),
-    ".PHONY: integration\nintegration:\n\ttest/integration/suites/slurm-x509/00-setup\n\ttest/integration/suites/slurm-x509/99-teardown\n",
+    "integration:\nifeq ($(os1), windows)\n\t$(error Integration tests are not supported on windows)\nelse\n\t$(E)$(go_path) IGNORE_SUITES='$(ignore_suites)' ./test/integration/test.sh $(SUITES)\nendif\n",
   );
   await writeFile(
-    join(root, "README.md"),
-    "# Integration tests\nThe Slurm suite is a safe no-op outside GitHub Actions.\n",
+    join(root, "test", "integration", "test.sh"),
+    "#!/bin/bash\n\nDIR=\"$( cd \"$( dirname \"${BASH_SOURCE[0]}\" )\" && pwd )\"\ncd \"${DIR}\" || fail-now \"Unable to change to script directory\"\n. ./common\n\nif [[ -z \"${SUITES}\" ]]; then\n   SUITES=suites/*\nfi\n\nif [[ -n $1 ]]; then\n        SUITES=$@\nfi\n\nfor suite in $SUITES; do\n    ./test-one.sh \"${suite}\"\ndone\n",
+  );
+  await writeFile(
+    join(suite, "README.md"),
+    "# slurm-x509 suite\n\nThis suite runs Slurm 23.11 directly on the host, while SPIRE runs in containers.\n\n## GitHub Actions only\n\nBecause it installs Slurm/munge on the host, starts host systemd services, and manipulates the host cgroup tree, this suite is intended to run **only on the ephemeral GitHub Actions runners** used by the SPIRE integration job. Every step (and the teardown) sources `skip-unless-github-actions.sh`. Running the suite on a developer workstation is therefore a safe no-op.\n",
+  );
+  await writeFile(
+    join(root, ".github", "workflows", "pr_build.yaml"),
+    "jobs:\n  integration:\n    runs-on: ${{ matrix.runs-on }}\n    strategy:\n      matrix:\n        include:\n          - arch: x64\n            runs-on: ubuntu-24.04\n          - arch: arm64\n            runs-on: ubuntu-24.04-arm\n    steps:\n      - name: Run integration tests\n        run: ./.github/workflows/scripts/split.sh | xargs ./test/integration/test.sh\n",
   );
   await writeFile(
     join(suite, "skip-unless-github-actions.sh"),
-    "#!/bin/sh\nif [ \"${GITHUB_ACTIONS:-}\" != true ]; then exit 0; fi\n",
+    "# Sourced at the top of every step script and the teardown.\nif [ \"${GITHUB_ACTIONS:-}\" != \"true\" ]; then\n    if [ ! -f \"${RUNDIR}/.gha-skip-notified\" ]; then\n        log-warn \"the \\\"slurm-x509\\\" suite only runs on GitHub Actions runners; skipping on this machine, reported as success.\"\n        : > \"${RUNDIR}/.gha-skip-notified\" 2>/dev/null || true\n    fi\n    exit 0\nfi\n",
   );
   await writeFile(
     join(suite, "00-setup"),
-    "#!/bin/sh\n. \"$(dirname \"$0\")/skip-unless-github-actions.sh\"\nsudo cp ./slurm.conf /etc/slurm/slurm.conf\nsudo systemctl restart slurmd\n",
+    "#!/bin/bash\n\nset -e\n\n# This suite is GitHub-Actions-only; skip (with success) elsewhere.\nsource \"${RUNDIR}/skip-unless-github-actions.sh\"\n\nsudo install -m 0755 ./spire-agent /usr/local/bin/spire-agent\nsudo install -m 0644 slurm.conf.rendered /etc/slurm/slurm.conf\nsudo systemctl restart munge\nsudo systemctl restart slurmctld\nsudo systemctl restart slurmd\n",
   );
+  const guardedSteps = {
+    "01-start-server": "docker-spire-server-up spire-server",
+    "02-bootstrap-agent": "log-debug \"bootstrapping agent...\"",
+    "03-start-agent": "docker-up spire-agent",
+    "04-submit-job": "JOBID=$(sbatch --parsable conf/job/fetch-svid.sh)",
+    "05-create-entry": "JOBID=$(cat job.id)",
+    "06-verify-fetch": "JOBID=$(cat job.id)",
+  };
+  for (const [name, command] of Object.entries(guardedSteps)) {
+    await writeFile(
+      join(suite, name),
+      `#!/bin/bash\n\n# This suite is GitHub-Actions-only; skip (with success) elsewhere.\nsource "\${RUNDIR}/skip-unless-github-actions.sh"\n\n${command}\n`,
+    );
+  }
   await writeFile(
-    join(suite, "99-teardown"),
-    "#!/bin/sh\n. \"$(dirname \"$0\")/skip-unless-github-actions.sh\"\nsudo scancel -a\nsudo systemctl stop slurmd\n",
+    join(suite, "teardown"),
+    "#!/bin/bash\n\n# This suite is GitHub-Actions-only; skip (with success) elsewhere. Nothing was started locally, so there is nothing to tear down.\nsource \"${RUNDIR}/skip-unless-github-actions.sh\"\n\ndocker-down\nsudo scancel -a >/dev/null 2>&1 || true\nsudo systemctl stop slurmd slurmctld munge >/dev/null 2>&1 || true\n",
   );
 
   const model: ReviewModel = repositoryReviewModel(
     [
       "Makefile",
-      "README.md",
+      "test/integration/test.sh",
+      "test/integration/suites/slurm-x509/README.md",
+      ".github/workflows/pr_build.yaml",
       "test/integration/suites/slurm-x509/skip-unless-github-actions.sh",
       "test/integration/suites/slurm-x509/00-setup",
-      "test/integration/suites/slurm-x509/99-teardown",
+      "test/integration/suites/slurm-x509/01-start-server",
+      "test/integration/suites/slurm-x509/02-bootstrap-agent",
+      "test/integration/suites/slurm-x509/03-start-agent",
+      "test/integration/suites/slurm-x509/04-submit-job",
+      "test/integration/suites/slurm-x509/05-create-entry",
+      "test/integration/suites/slurm-x509/06-verify-fetch",
+      "test/integration/suites/slurm-x509/teardown",
     ],
     async <T>(request: ModelReviewRequest) => {
       const input = JSON.stringify(request.input);
-      assert.match(request.prompt, /dominating CI\/opt-in\/existing-service refusal before every effect/);
+      assert.match(request.prompt, /hosted-CI\/opt-in\/existing-service refusal before every effect/);
       assert.match(input, /GITHUB_ACTIONS/);
-      assert.match(input, /safe no-op outside GitHub Actions/);
+      assert.match(input, /ubuntu-24\.04/);
+      assert.match(input, /developer workstation is therefore a safe no-op/);
       assert.match(input, /skip-unless-github-actions\.sh/);
       assert.match(input, /\/etc\/slurm\/slurm\.conf/);
       assert.match(input, /scancel -a/);
+      for (const name of ["00-setup", ...Object.keys(guardedSteps), "teardown"]) {
+        assert.match(input, new RegExp(name));
+      }
       return { output: cleanReview as T, provider: "fixture", model: "fixture" };
     },
   );
