@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -10,6 +10,19 @@ import {
 } from "@adversarylabs/sdk";
 import { createApp } from "../src/index.ts";
 import { repositoryReviewModel } from "./repository-model.ts";
+
+const cleanReview = {
+  schemaVersion: 1,
+  overall: {
+    verdict: "well-engineered",
+    risk: "none",
+    ship: true,
+    summary: "The retrieved sources do not prove a material engineering concern.",
+    primaryConcern: "",
+  },
+  observations: [],
+  strengths: [],
+} as const;
 
 test("placeholder observation prose receives one bounded repair attempt and then fails closed", async () => {
   const root = await mkdtemp(join(tmpdir(), "engineering-review-placeholder-"));
@@ -1045,6 +1058,237 @@ test("separate mutations stay quiet when coalescing is not proven safe or materi
       model,
     });
 
+    assert.deepEqual(result.findings, [], sample.name);
+    assert.equal(result.opinion?.ship, true, sample.name);
+  }
+});
+
+test("a locally runnable host-destructive integration harness is reviewable as one operational risk", async () => {
+  const root = await mkdtemp(join(tmpdir(), "engineering-review-host-harness-"));
+  const suite = join(root, "test", "integration", "suites", "slurm-x509");
+  await mkdir(suite, { recursive: true });
+  await writeFile(
+    join(root, "Makefile"),
+    ".PHONY: integration\nintegration:\n\ttest/integration/suites/slurm-x509/00-setup\n\ttest/integration/suites/slurm-x509/99-teardown\n",
+  );
+  await writeFile(
+    join(root, "README.md"),
+    "# Integration tests\nRun `make integration` on a development machine to execute all integration suites.\n",
+  );
+  await writeFile(
+    join(suite, "00-setup"),
+    "#!/bin/sh\nsudo install ./spire-agent /usr/local/bin/spire-agent\nsudo cp ./slurm.conf /etc/slurm/slurm.conf\nsudo systemctl restart munge slurmctld slurmd\n",
+  );
+  await writeFile(
+    join(suite, "99-teardown"),
+    "#!/bin/sh\nsudo scancel -a\nsudo systemctl stop slurmd slurmctld munge\n",
+  );
+
+  const model: ReviewModel = repositoryReviewModel(
+    [
+      "Makefile",
+      "README.md",
+      "test/integration/suites/slurm-x509/00-setup",
+      "test/integration/suites/slurm-x509/99-teardown",
+    ],
+    async <T>(request: ModelReviewRequest) => {
+      const input = JSON.stringify(request.input);
+      assert.match(request.prompt, /Host-destructive test harnesses/);
+      assert.match(request.prompt, /all of the following/);
+      assert.match(input, /make integration/);
+      assert.match(input, /\/usr\/local\/bin\/spire-agent/);
+      assert.match(input, /\/etc\/slurm\/slurm\.conf/);
+      assert.match(input, /systemctl restart munge slurmctld slurmd/);
+      assert.match(input, /scancel -a/);
+      return {
+        output: {
+          schemaVersion: 1,
+          overall: {
+            verdict: "high-operational-risk",
+            risk: "high",
+            ship: false,
+            summary: "The locally documented integration target can replace host Slurm state and control live system services without an isolation or refusal boundary.",
+            primaryConcern: "the uncontained host-destructive integration harness",
+          },
+          observations: [{
+            id: "host-destructive-integration-harness",
+            title: "Contain the host-destructive integration harness",
+            category: "risk",
+            severity: "high",
+            confidence: "high",
+            principle: "Locally runnable test harnesses must contain persistent privileged effects and live service control behind an explicit safety boundary.",
+            summary: "The documented local integration target reaches setup and teardown that install host files, replace Slurm configuration, restart daemons, and cancel all jobs.",
+            impact: "A developer running the documented target can overwrite a real Slurm installation, interrupt its daemons, and cancel unrelated workloads.",
+            recommendation: "Make this suite CI-only or require an explicit destructive-test opt-in or disposable host before any setup effect.",
+            tradeoffs: "A disposable VM may be required when the suite needs the real host cgroup hierarchy.",
+            evidence: [{
+              citationId: "repo:read:1",
+              line: 2,
+              detail: "The default local integration target directly reaches the suite setup and teardown.",
+            }, {
+              citationId: "repo:read:2",
+              line: 2,
+              detail: "The repository documents the target as runnable on a development machine.",
+            }, {
+              citationId: "repo:read:3",
+              line: 2,
+              detail: "Setup installs a binary into the host's persistent executable path.",
+            }, {
+              citationId: "repo:read:3",
+              line: 4,
+              detail: "The same setup restarts the live Slurm and munge services.",
+            }, {
+              citationId: "repo:read:4",
+              line: 2,
+              detail: "Teardown cancels all Slurm jobs, not only test-owned jobs.",
+            }],
+          }],
+          strengths: [],
+        } as T,
+        provider: "fixture",
+        model: "fixture",
+      };
+    },
+  );
+
+  const result = await createApp().run({
+    input: {
+      source: { path: root },
+      change: {
+        type: "diff",
+        base_ref: "base",
+        head_ref: "head",
+        scan_mode: "changed",
+        changed_files: [
+          "Makefile",
+          "README.md",
+          "test/integration/suites/slurm-x509/00-setup",
+          "test/integration/suites/slurm-x509/99-teardown",
+        ],
+      },
+    },
+    model,
+  });
+
+  assert.equal(result.findings.length, 1);
+  assert.equal(result.findings[0]?.evidence?.length, 5);
+  assert.equal(result.opinion?.ship, false);
+  assert.equal(result.assessment?.risk, "high");
+});
+
+test("a dominating CI refusal keeps the same integration effects quiet", async () => {
+  const root = await mkdtemp(join(tmpdir(), "engineering-review-ci-gated-harness-"));
+  const suite = join(root, "test", "integration", "suites", "slurm-x509");
+  await mkdir(suite, { recursive: true });
+  await writeFile(
+    join(root, "Makefile"),
+    ".PHONY: integration\nintegration:\n\ttest/integration/suites/slurm-x509/00-setup\n\ttest/integration/suites/slurm-x509/99-teardown\n",
+  );
+  await writeFile(
+    join(root, "README.md"),
+    "# Integration tests\nThe Slurm suite is a safe no-op outside GitHub Actions.\n",
+  );
+  await writeFile(
+    join(suite, "skip-unless-github-actions.sh"),
+    "#!/bin/sh\nif [ \"${GITHUB_ACTIONS:-}\" != true ]; then exit 0; fi\n",
+  );
+  await writeFile(
+    join(suite, "00-setup"),
+    "#!/bin/sh\n. \"$(dirname \"$0\")/skip-unless-github-actions.sh\"\nsudo cp ./slurm.conf /etc/slurm/slurm.conf\nsudo systemctl restart slurmd\n",
+  );
+  await writeFile(
+    join(suite, "99-teardown"),
+    "#!/bin/sh\n. \"$(dirname \"$0\")/skip-unless-github-actions.sh\"\nsudo scancel -a\nsudo systemctl stop slurmd\n",
+  );
+
+  const model: ReviewModel = repositoryReviewModel(
+    [
+      "Makefile",
+      "README.md",
+      "test/integration/suites/slurm-x509/skip-unless-github-actions.sh",
+      "test/integration/suites/slurm-x509/00-setup",
+      "test/integration/suites/slurm-x509/99-teardown",
+    ],
+    async <T>(request: ModelReviewRequest) => {
+      const input = JSON.stringify(request.input);
+      assert.match(request.prompt, /dominating CI\/opt-in\/existing-service refusal before every effect/);
+      assert.match(input, /GITHUB_ACTIONS/);
+      assert.match(input, /safe no-op outside GitHub Actions/);
+      assert.match(input, /skip-unless-github-actions\.sh/);
+      assert.match(input, /\/etc\/slurm\/slurm\.conf/);
+      assert.match(input, /scancel -a/);
+      return { output: cleanReview as T, provider: "fixture", model: "fixture" };
+    },
+  );
+
+  const result = await createApp().run({ input: { source: { path: root } }, model });
+  assert.deepEqual(result.findings, []);
+  assert.equal(result.opinion?.ship, true);
+});
+
+test("host-harness guardrail contexts remain available without becoming findings", async () => {
+  const cases = [{
+    name: "container",
+    paths: {
+      "Dockerfile": "FROM ubuntu:24.04\nRUN cp ./slurm.conf /etc/slurm/slurm.conf && systemctl restart slurmd\n",
+      "test/integration/container.sh": "#!/bin/sh\ndocker build -t slurm-test .\n",
+    },
+  }, {
+    name: "ci-only",
+    paths: {
+      ".github/workflows/integration.yml": "jobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: test/integration/host.sh\n",
+      "test/integration/host.sh": "#!/bin/sh\nsudo cp ./slurm.conf /etc/slurm/slurm.conf\nsudo systemctl restart slurmd\n",
+    },
+  }, {
+    name: "explicit-opt-in",
+    paths: {
+      "test/integration/host.sh": "#!/bin/sh\n[ \"${ALLOW_DESTRUCTIVE_HOST_TESTS:-}\" = yes ] || exit 0\nsudo cp ./slurm.conf /etc/slurm/slurm.conf\nsudo systemctl restart slurmd\n",
+    },
+  }, {
+    name: "existing-service-refusal",
+    paths: {
+      "test/integration/host.sh": "#!/bin/sh\n! systemctl is-active --quiet slurmd || exit 1\n[ ! -e /etc/slurm/slurm.conf ] || exit 1\nsudo cp ./slurm.conf /etc/slurm/slurm.conf\nsudo systemctl restart slurmd\n",
+    },
+  }, {
+    name: "disposable-vm",
+    paths: {
+      "Vagrantfile": "Vagrant.configure('2') { |c| c.vm.provision 'shell', path: 'test/integration/host.sh' }\n",
+      "test/integration/host.sh": "#!/bin/sh\nsudo cp ./slurm.conf /etc/slurm/slurm.conf\nsudo systemctl restart slurmd\n",
+    },
+  }, {
+    name: "chroot-and-temp",
+    paths: {
+      "test/integration/host.sh": "#!/bin/sh\nroot=$(mktemp -d)\ninstall -D ./slurm.conf \"$root/etc/slurm/slurm.conf\"\nchroot \"$root\" systemctl restart slurmd\n",
+    },
+  }, {
+    name: "uninvoked-helper",
+    paths: {
+      "test/integration/host.sh": "#!/bin/sh\ndangerous_setup() { sudo cp ./slurm.conf /etc/slurm/slurm.conf; sudo systemctl restart slurmd; }\necho ready\n",
+    },
+  }, {
+    name: "partial-evidence",
+    paths: {
+      "test/integration/host.sh": "#!/bin/sh\nsudo install ./helper /usr/local/bin/test-helper\n",
+    },
+  }];
+
+  for (const sample of cases) {
+    const root = await mkdtemp(join(tmpdir(), `engineering-review-host-guardrail-${sample.name}-`));
+    for (const [path, content] of Object.entries(sample.paths)) {
+      await mkdir(join(root, path, ".."), { recursive: true });
+      await writeFile(join(root, path), content);
+    }
+    const paths = Object.keys(sample.paths);
+    const model: ReviewModel = repositoryReviewModel(
+      paths,
+      async <T>(request: ModelReviewRequest) => {
+        assert.match(request.prompt, /Host-destructive test harnesses/);
+        assert.match(request.prompt, /Stay quiet for Dockerfile\/image-build effects/);
+        assert.ok(paths.every((path) => JSON.stringify(request.input).includes(path)));
+        return { output: cleanReview as T, provider: "fixture", model: "fixture" };
+      },
+    );
+    const result = await createApp().run({ input: { source: { path: root } }, model });
     assert.deepEqual(result.findings, [], sample.name);
     assert.equal(result.opinion?.ship, true, sample.name);
   }

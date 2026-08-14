@@ -83,7 +83,7 @@ test("changed scope counts unique reviewable changed files", async () => {
   try {
     await writeFile(join(root, "changed.ts"), "export const selected = true;\n");
     await writeFile(join(root, "context.ts"), "export const context = true;\n");
-    await writeFile(join(root, "README.md"), "# Not a source file\n");
+    await writeFile(join(root, "README.md"), "# Local harness documentation\n");
     const model = repositoryReviewModel(
       ["changed.ts"],
       async <T>() => ({
@@ -107,7 +107,7 @@ test("changed scope counts unique reviewable changed files", async () => {
       model,
     });
 
-    assert.equal(result.target.filesScanned, 1);
+    assert.equal(result.target.filesScanned, 2);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

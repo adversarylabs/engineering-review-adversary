@@ -1,6 +1,6 @@
 import type { RuleContext } from "@adversarylabs/sdk";
 
-export const SOURCE_PATTERNS = [
+export const TRIGGER_PATTERNS = [
   "*.go",
   "**/*.go",
   "*.ts",
@@ -23,6 +23,34 @@ export const SOURCE_PATTERNS = [
   "**/*.kt",
   "*.kts",
   "**/*.kts",
+  "*.sh",
+  "**/*.sh",
+  "*.bash",
+  "**/*.bash",
+  "*.mk",
+  "**/*.mk",
+  "Makefile",
+  "**/Makefile",
+  "GNUmakefile",
+  "**/GNUmakefile",
+  "*.md",
+  "**/*.md",
+  "**/integration/**/00-setup",
+  "**/integration/**/99-teardown",
+] as const;
+
+export const SOURCE_PATTERNS = [
+  ...TRIGGER_PATTERNS,
+  "Dockerfile",
+  "**/Dockerfile",
+  "Dockerfile.*",
+  "**/Dockerfile.*",
+  "Vagrantfile",
+  "**/Vagrantfile",
+  ".github/workflows/*.yml",
+  ".github/workflows/*.yaml",
+  ".github/workflows/**/*.yml",
+  ".github/workflows/**/*.yaml",
 ] as const;
 
 const ignoredSegments = new Set([
@@ -59,10 +87,18 @@ export function isReviewableSource(path: string): boolean {
   ) {
     return false;
   }
-  return SOURCE_PATTERNS.some((pattern) => {
-    const suffix = pattern.startsWith("**/*") ? pattern.slice(4) : pattern.slice(1);
-    return normalized.endsWith(suffix);
-  });
+  const name = segments.at(-1) ?? "";
+  if (["Makefile", "GNUmakefile", "Vagrantfile"].includes(name) || /^Dockerfile(?:\..+)?$/.test(name)) {
+    return true;
+  }
+  if (/\.github\/workflows\/.*\.ya?ml$/i.test(normalized)) return true;
+  if (
+    segments.includes("integration") &&
+    /^(?:00-setup|99-teardown)$/.test(name)
+  ) {
+    return true;
+  }
+  return /\.(?:go|ts|tsx|js|jsx|py|rs|java|cs|kt|kts|sh|bash|mk|md)$/i.test(normalized);
 }
 
 export async function countReviewableSources(ctx: RuleContext): Promise<number> {

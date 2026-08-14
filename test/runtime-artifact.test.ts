@@ -24,6 +24,7 @@ test("package intent excludes authoring inputs but retains runtime assets", asyn
     "fixtures/",
     "scripts/",
     ".depot/",
+    ".git",
     "tsconfig.json",
     "AGENTS.md",
     "CHECKS.md",
@@ -103,6 +104,6 @@ test("the published runtime executes without node_modules", async () => {
   });
 
   assert.equal(result.adversary.name, "engineering-review");
-  assert.equal(result.adversary.version, "0.0.25");
+  assert.equal(result.adversary.version, "0.0.26");
   assert.deepEqual(result.findings, []);
 });

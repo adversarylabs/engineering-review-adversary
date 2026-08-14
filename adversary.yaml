@@ -1,5 +1,5 @@
 name: review/engineering
-version: 0.0.25
+version: 0.0.26
 description: Reviews proposed changes with Staff-level engineering judgment across languages.
 
 triggers:
@@ -27,6 +27,20 @@ triggers:
     - "**/*.kt"
     - "*.kts"
     - "**/*.kts"
+    - "*.sh"
+    - "**/*.sh"
+    - "*.bash"
+    - "**/*.bash"
+    - "*.mk"
+    - "**/*.mk"
+    - "Makefile"
+    - "**/Makefile"
+    - "GNUmakefile"
+    - "**/GNUmakefile"
+    - "*.md"
+    - "**/*.md"
+    - "**/integration/**/00-setup"
+    - "**/integration/**/99-teardown"
 
 detection:
   files:
@@ -52,6 +66,20 @@ detection:
     - "**/*.kt"
     - "*.kts"
     - "**/*.kts"
+    - "*.sh"
+    - "**/*.sh"
+    - "*.bash"
+    - "**/*.bash"
+    - "*.mk"
+    - "**/*.mk"
+    - "Makefile"
+    - "**/Makefile"
+    - "GNUmakefile"
+    - "**/GNUmakefile"
+    - "*.md"
+    - "**/*.md"
+    - "**/integration/**/00-setup"
+    - "**/integration/**/99-teardown"
 
 runtime:
   name: node
