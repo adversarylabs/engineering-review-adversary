@@ -36,6 +36,14 @@ Repository content is treated as **untrusted** (prompt-injection resistant): the
 | **What** | A changed contract is not carried through related representations, consumers, sibling paths, state transitions, or compatibility boundaries |
 | **Stays quiet when** | The migration is complete, compatibility is established, or the concern is outside the changed contract neighborhood |
 
+### Production decoder framing
+
+| | |
+| --- | --- |
+| **What** | A changed decoder at a reachable serialized, persisted, or external-state boundary enforces required framing or alignment only with an assertion disabled in production, then uses a consumer proven to ignore malformed remainder and return success |
+| **Evidence** | Cite both the release-disabled invariant check and the tolerant partial consumer that discards or truncates the remainder |
+| **Stays quiet when** | Construction is proven trusted, production validation rejects malformed framing, the consumer exposes or rejects remainder, or the debug assertion duplicates a real check |
+
 ### Ownership, boundaries, and sources of truth
 
 | | |

@@ -30,7 +30,15 @@ test("package intent excludes authoring inputs but retains runtime assets", asyn
   ]) {
     assert.equal(ignored.has(authoringInput), true, `${authoringInput} should not ship`);
   }
-  for (const runtimeAsset of ["dist/", "schemas/", "adversary.yaml", "package.json", "README.md", "LICENSE"]) {
+  for (const runtimeAsset of [
+    "dist/",
+    "schemas/",
+    "adversary.yaml",
+    "package.json",
+    "README.md",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md",
+  ]) {
     assert.equal(ignored.has(runtimeAsset), false, `${runtimeAsset} must remain packageable`);
   }
 });
@@ -39,13 +47,29 @@ test("the published runtime executes without node_modules", async () => {
   const artifact = await mkdtemp(join(tmpdir(), "engineering-review-artifact-"));
   const repository = await mkdtemp(join(tmpdir(), "engineering-review-target-"));
   const entrypoint = join(artifact, "dist", "index.js");
+  const noticesPath = join(artifact, "THIRD_PARTY_NOTICES.md");
   await mkdir(dirname(entrypoint), { recursive: true });
   await copyFile(join(projectRoot, "dist", "index.js"), entrypoint);
+  await copyFile(join(projectRoot, "THIRD_PARTY_NOTICES.md"), noticesPath);
   await writeFile(join(artifact, "package.json"), '{"type":"module"}\n');
   await writeFile(join(repository, "main.go"), "package sample\n\nfunc ready() bool { return true }\n");
 
   const bundle = await readFile(entrypoint, "utf8");
   assert.doesNotMatch(bundle, /from\s+["']@adversarylabs\/sdk["']/);
+  assert.doesNotMatch(bundle, /\/Users\/marc|\/private\/tmp\/engineering-review/);
+  const notices = await readFile(noticesPath, "utf8");
+  assert.deepEqual([...notices.matchAll(/^## (.+?) \(/gm)].map((match) => match[1]), [
+    "@adversarylabs/sdk",
+    "ajv",
+    "fast-deep-equal",
+    "fast-uri",
+    "json-schema-traverse",
+    "yaml",
+  ]);
+  for (const section of notices.split(/^## /m).slice(1)) {
+    assert.ok(section.length > 300, `expected a full license text, got ${section.length} bytes`);
+    assert.match(section, /copyright|permission|redistribution|license/i);
+  }
 
   const runtime = await import(pathToFileURL(entrypoint).href) as {
     createApp(): {
@@ -79,6 +103,6 @@ test("the published runtime executes without node_modules", async () => {
   });
 
   assert.equal(result.adversary.name, "engineering-review");
-  assert.equal(result.adversary.version, "0.0.24");
+  assert.equal(result.adversary.version, "0.0.25");
   assert.deepEqual(result.findings, []);
 });

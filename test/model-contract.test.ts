@@ -64,6 +64,24 @@ test("prompt preserves value metadata on alternate paths", () => {
   assert.match(ENGINEERING_REVIEW_PROMPT, /evaluates the value together with its metadata/);
 });
 
+test("prompt requires production framing validation before tolerant partial decoding", () => {
+  assert.match(
+    ENGINEERING_REVIEW_PROMPT,
+    /decodes serialized, persisted, or externally supplied state/,
+  );
+  assert.match(ENGINEERING_REVIEW_PROMPT, /assertion disabled in production/);
+  assert.match(
+    ENGINEERING_REVIEW_PROMPT,
+    /consumer is proven to ignore or truncate malformed remainder and still return success/,
+  );
+  assert.match(ENGINEERING_REVIEW_PROMPT, /reachable malformed-input boundary/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /cite both the release-disabled check and the tolerant partial consumer/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /construction is proven trusted/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /production validation already rejects malformed framing/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /consumer exposes or rejects any remainder/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /debug assertion only duplicates a real check/);
+});
+
 test("prompt accounts for actual pagination progress", () => {
   assert.match(
     ENGINEERING_REVIEW_PROMPT,
