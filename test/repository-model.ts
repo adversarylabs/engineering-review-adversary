@@ -8,17 +8,18 @@ export function repositoryReviewModel(
   paths: readonly string[],
   finalReview: <T>(request: ModelReviewRequest) => Promise<ModelReviewResult<T>>,
 ): ReviewModel {
-  let retrievalStarted = false;
+  let retrievalIndex = 0;
   return {
     async review<T>(request: ModelReviewRequest): Promise<ModelReviewResult<T>> {
       const properties = request.schema.properties as Record<string, unknown> | undefined;
       if (properties?.ready !== undefined) {
-        if (!retrievalStarted) {
-          retrievalStarted = true;
+        if (retrievalIndex < paths.length) {
+          const batch = paths.slice(retrievalIndex, retrievalIndex + 8);
+          retrievalIndex += batch.length;
           return {
             output: {
               ready: false,
-              operations: paths.map((path) => ({
+              operations: batch.map((path) => ({
                 tool: "read_file",
                 path,
                 cursor: 0,
@@ -36,7 +37,7 @@ export function repositoryReviewModel(
           model: "retrieval-planner",
         };
       }
-      retrievalStarted = false;
+      retrievalIndex = 0;
       return finalReview<T>(request);
     },
   };

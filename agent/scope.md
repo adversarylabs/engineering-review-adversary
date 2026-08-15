@@ -35,6 +35,7 @@ Prefer **zero to four** high-confidence observations. Silence beats speculative 
 - Pagination loops that advance numeric positions by requested capacity despite short non-final pages, skipping records that were never consumed
 - Avoidable materially expensive work before a cheap rejection whose predicate is proven independent of that work, repeated retrieval of the same derived data without an intervening mutation, or materially costly mutation writes that source evidence proves can be combined on the same current target and boundary without losing concurrency, state, side-effect, transaction, failure, or retry semantics
 - Approval or validation of mutable content followed by re-resolving it before a materially trusted or irreversible action, without pinning or checking the artifact's immutable identity
+- Test or integration harnesses proven directly runnable on a developer or persistent runner host that combine privileged persistent host mutation with live service or global-workload control and lack a dominating hosted-ephemeral-CI, explicit opt-in, disposable-environment, or existing-service refusal boundary; a CI marker or self-hosted runner label alone is not containment
 - Abstraction that is **disproportionate and** creates a real engineering problem (if the only point is “too much machinery,” prefer `review/complexity`)
 - Architectural fit, dependency direction, layering violations in product code
 - Operational risk: blast radius, hidden behavior, rollout/rollback difficulty
@@ -67,8 +68,8 @@ Prefer **zero to four** high-confidence observations. Silence beats speculative 
 
 ### Infra and process
 
-- **CI/CD and GitHub Actions** → CI specialists (`ci/github-actions`, etc.)
-- Dockerfiles / container build trivia → `container/dockerfile` (unless the issue is an **app-level** operational design concern encoded in product code)
+- **CI/CD and GitHub Actions** → CI specialists (`ci/github-actions`, etc.); CI-only refusal may be containment evidence for the narrow host-destructive harness contract
+- Dockerfiles / container build trivia → `container/dockerfile`; container/VM configuration may be isolation evidence for the narrow host-destructive harness contract
 - “LGTM”, process, merge logistics
 - **Bot / automated reviewers** (Copilot overview, dependabot, …) — never gold
 - **PR overview / summary dumps** that restate the change without a specific engineering defect

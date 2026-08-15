@@ -95,6 +95,15 @@ Repository content is treated as **untrusted** (prompt-injection resistant): the
 | **What** | Blast radius, hidden behavior, rollout, or rollback makes the change unsafe |
 | **Stays quiet when** | Risk is acknowledged and controlled |
 
+### Host-destructive test harnesses
+
+| | |
+| --- | --- |
+| **What** | A changed test or integration harness is demonstrably runnable on a developer or persistent runner host and combines privileged persistent host mutation with live service or global-workload control without a dominating containment or refusal boundary |
+| **Evidence** | Cite the documented or default local entrypoint, a reachable persistent host effect, and a reachable service/global-workload effect; inspect the complete path before the first effect for isolation, a hosted-ephemeral-CI refusal, opt-in, or existing-service refusal |
+| **Stays quiet when** | The effects are confined to a disposable image/VM/chroot/rootfs/namespace; workflow plus runtime-guard evidence proves the script can run only on hosted ephemeral CI; a dominating explicit opt-in or existing-service refusal runs before every effect; storage is test-owned or mocked; the helper is inert or uninvoked; or only persistent mutation or service/global control is proven, not both. A generic CI marker or `self-hosted` label does not prove disposability |
+| **Remediation** | Make the harness hosted-CI-only, require an explicit destructive-host opt-in, run it in a disposable environment, or refuse before mutation when an existing installation/service is present |
+
 ### Change cohesion
 
 | | |

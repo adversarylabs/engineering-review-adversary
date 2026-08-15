@@ -26,7 +26,7 @@ Highlights:
 | Correctness | Per-entity constraints incorrectly collapsed into a global gate |
 | Semantic parity | Fast or specialized paths that drop validity or presence metadata |
 | Progress | Pagination offsets that skip unseen records after short pages |
-| Operations | Blast radius, rollback difficulty, hidden behavior |
+| Operations | Blast radius, rollback difficulty, hidden behavior, uncontained host-destructive integration harnesses |
 | Validation | Important changed behavior without adequate proof |
 | Approval | Overall ship assessment (well-engineered → high operational risk) |
 
