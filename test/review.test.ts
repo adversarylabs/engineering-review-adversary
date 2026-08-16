@@ -1342,3 +1342,176 @@ test("host-harness guardrail contexts remain available without becoming findings
     assert.equal(result.opinion?.ship, true, sample.name);
   }
 });
+
+const schemaWithInvalidDefault = `export const promptSchema = {
+  variables: {
+    tone: { type: "string", enum: ["formal", "casual"], default: "forma" },
+  },
+};
+
+export function render(caller: Record<string, unknown>, schema = promptSchema) {
+  for (const [name, value] of Object.entries(caller)) {
+    const spec = schema.variables[name as keyof typeof schema.variables];
+    if (spec?.enum && !spec.enum.includes(String(value))) {
+      throw new Error(\`invalid \${name}\`);
+    }
+  }
+  const effective = { tone: schema.variables.tone.default, ...caller };
+  return String(effective.tone);
+}
+`;
+
+const schemaWithRevalidatedDefault = schemaWithInvalidDefault.replace(
+  "const effective = { tone: schema.variables.tone.default, ...caller };\n  return String(effective.tone);",
+  `const effective = { tone: schema.variables.tone.default, ...caller };
+  for (const [name, value] of Object.entries(effective)) {
+    const spec = schema.variables[name as keyof typeof schema.variables];
+    if (spec?.enum && !spec.enum.includes(String(value))) {
+      throw new Error(\`invalid effective \${name}\`);
+    }
+  }
+  return String(effective.tone);`,
+);
+
+test("a schema default that can violate its enum after caller-only validation is reviewable", async () => {
+  const root = await mkdtemp(join(tmpdir(), "engineering-review-effective-value-"));
+  await writeFile(join(root, "render.ts"), schemaWithInvalidDefault);
+  const model: ReviewModel = repositoryReviewModel(
+    ["render.ts"],
+    async <T>(request: ModelReviewRequest) => {
+      assert.match(request.prompt, /same applicable constraints on that effective value/);
+      assert.match(JSON.stringify(request.input), /default: \\"forma\\"/);
+      assert.match(JSON.stringify(request.input), /const effective/);
+      return {
+        output: {
+          schemaVersion: 1,
+          overall: {
+            verdict: "incomplete-implementation",
+            risk: "medium",
+            ship: false,
+            summary: "Caller values are checked against the enum, but the rendered default can violate that same enum.",
+            primaryConcern: "the unvalidated effective prompt default",
+          },
+          observations: [{
+            id: "unvalidated-effective-default",
+            title: "Validate derived defaults before render",
+            category: "correctness",
+            severity: "medium",
+            confidence: "high",
+            principle: "Constraints that apply to caller values also apply to defaults that are later consumed.",
+            summary: "The renderer validates caller maps, then inserts schema.default and renders it without rechecking the enum.",
+            impact: "A typo such as default: forma is rendered as if it were a legal tone.",
+            recommendation: "Re-apply type, enum, and range checks to effectiveVariables after defaults are merged.",
+            tradeoffs: "required can remain a caller-presence rule if that is the documented contract.",
+            evidence: [{
+              citationId: "repo:read:1",
+              line: 3,
+              detail: "The schema default is outside the declared enum.",
+            }, {
+              citationId: "repo:read:1",
+              line: 14,
+              detail: "The derived effective value is what render consumes.",
+            }],
+          }],
+          strengths: [],
+        } as T,
+        provider: "fixture",
+        model: "fixture",
+      };
+    },
+  );
+  const result = await createApp().run({
+    input: {
+      source: { path: root },
+      change: {
+        type: "diff",
+        base_ref: "base",
+        head_ref: "head",
+        scan_mode: "changed",
+        changed_files: ["render.ts"],
+      },
+    },
+    model,
+  });
+  assert.equal(result.findings.length, 1);
+  assert.equal(result.opinion?.ship, false);
+});
+
+test("revalidated effective values and caller-presence required stay quiet", async () => {
+  const root = await mkdtemp(join(tmpdir(), "engineering-review-effective-clean-"));
+  await writeFile(join(root, "render.ts"), schemaWithRevalidatedDefault);
+  const model: ReviewModel = repositoryReviewModel(
+    ["render.ts"],
+    async <T>(request: ModelReviewRequest) => {
+      assert.match(request.prompt, /effective values are revalidated/);
+      assert.match(request.prompt, /intentionally a caller-presence check such as required/);
+      return {
+        output: {
+          schemaVersion: 1,
+          overall: {
+            verdict: "well-engineered",
+            risk: "none",
+            ship: true,
+            summary: "Effective values are checked after defaults are applied.",
+            primaryConcern: "",
+          },
+          observations: [],
+          strengths: [],
+        } as T,
+        provider: "fixture",
+        model: "fixture",
+      };
+    },
+  );
+  const result = await createApp().run({
+    input: { source: { path: root } },
+    model,
+  });
+  assert.deepEqual(result.findings, []);
+  assert.equal(result.opinion?.ship, true);
+});
+
+test("a comment-only edit beside a legacy invalid default stays quiet", async () => {
+  const root = await mkdtemp(join(tmpdir(), "engineering-review-effective-comment-"));
+  await writeFile(join(root, "render.ts"), `${schemaWithInvalidDefault}\n// note: keep enum and default aligned\n`);
+  const model: ReviewModel = repositoryReviewModel(
+    ["render.ts"],
+    async <T>(request: ModelReviewRequest) => {
+      const wrapped = request.input as {
+        reviewInput?: { reviewScope?: { changedFiles?: string[] } };
+      };
+      assert.deepEqual(wrapped.reviewInput?.reviewScope?.changedFiles, ["render.ts"]);
+      return {
+        output: {
+          schemaVersion: 1,
+          overall: {
+            verdict: "well-engineered",
+            risk: "none",
+            ship: true,
+            summary: "The comment does not change the validation contract.",
+            primaryConcern: "",
+          },
+          observations: [],
+          strengths: [],
+        } as T,
+        provider: "fixture",
+        model: "fixture",
+      };
+    },
+  );
+  const result = await createApp().run({
+    input: {
+      source: { path: root },
+      change: {
+        type: "diff",
+        base_ref: "base",
+        head_ref: "head",
+        scan_mode: "changed",
+        changed_files: ["render.ts"],
+      },
+    },
+    model,
+  });
+  assert.deepEqual(result.findings, []);
+  assert.equal(result.opinion?.ship, true);
+});

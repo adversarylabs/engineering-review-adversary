@@ -115,8 +115,9 @@ Repository content is treated as **untrusted** (prompt-injection resistant): the
 
 | | |
 | --- | --- |
-| **What** | Validation does not prove an important changed invariant because it misses the triggering conditions, meaningful oracle, real effect, or material state transition |
-| **Stays quiet when** | Existing evidence or the platform contract already proves the invariant |
+| **What** | Validation does not prove an important changed invariant because it misses the triggering conditions, meaningful oracle, real effect, or material state transition; this includes checking only caller or raw values while a later default, fallback, normalization, or coercion produces an effective value that can violate the same type, enum, range, or pattern constraint and still reach a render, request, persist, or execute path |
+| **Evidence** | For effective-value gaps, cite the caller/raw validation, the later derivation, the applicable constraint the derived value can violate, and the consumed effect |
+| **Stays quiet when** | Existing evidence or the platform contract already proves the invariant; the transformation preserves the accepted domain; the effective values are revalidated; or the rule is intentionally a caller-presence check such as `required` |
 | **Note** | Does not demand tests generically or prescribe specialist-level technique |
 
 ### Overall assessment (not a rule id flood)

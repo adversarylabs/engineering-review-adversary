@@ -172,6 +172,24 @@ test("prompt binds approval of mutable content to an immutable artifact identity
   );
 });
 
+test("prompt requires applicable constraints on derived effective values", () => {
+  assert.match(
+    ENGINEERING_REVIEW_PROMPT,
+    /later default, fallback, normalization, or coercion produces the value actually rendered/,
+  );
+  assert.match(
+    ENGINEERING_REVIEW_PROMPT,
+    /require those same applicable constraints on that effective value/,
+  );
+  assert.match(
+    ENGINEERING_REVIEW_PROMPT,
+    /derived value can violate the constraint and still reach a real effect/,
+  );
+  assert.match(ENGINEERING_REVIEW_PROMPT, /transformation provably preserves the accepted domain/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /effective values are revalidated/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /intentionally a caller-presence check such as required/);
+});
+
 test("model schema is strict and avoids provider-specific constraint keywords", async () => {
   const text = await readFile(
     new URL("../schemas/engineering-review.model.v1.schema.json", import.meta.url),
