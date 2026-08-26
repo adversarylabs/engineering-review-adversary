@@ -3,6 +3,7 @@ test/
 fixtures/
 scripts/
 coverage/
+node_modules/
 .depot/
 .adversary-train/
 tsconfig.json
