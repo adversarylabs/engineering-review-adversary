@@ -323,6 +323,209 @@ test("generalized contract guidance supports one cross-layer finding", async () 
   assert.equal(result.opinion?.ship, false);
 });
 
+test("normative combination and ordering mismatches are reviewable", async () => {
+  const root = await mkdtemp(join(tmpdir(), "engineering-review-normative-order-"));
+  await writeFile(
+    join(root, "runtime-spec.md"),
+    "OCI runtime-spec v1.3.0: if l3CacheSchema, memBwSchema, and schemata are set, runtimes MUST write L3 first, MB second, and the schemata values last.\n",
+  );
+  await writeFile(
+    join(root, "intel_rdt.rs"),
+    `/// Retrieves schemata data after aligning Intel RDT with OCI runtime-spec v1.3.0.
+fn get_schemata_data(intel_rdt: &LinuxIntelRdt) -> Option<String> {
+    if let Some(schemata) = intel_rdt.schemata() {
+        if !schemata.is_empty() {
+            return Some(schemata.join("\\n"));
+        }
+    }
+
+    combine_l3_cache_and_mem_bw_schemas(
+        intel_rdt.l3_cache_schema(),
+        intel_rdt.mem_bw_schema(),
+    )
+}
+`,
+  );
+  const model: ReviewModel = repositoryReviewModel(
+    ["runtime-spec.md", "intel_rdt.rs"],
+    async <T>(request: ModelReviewRequest) => {
+      assert.match(request.prompt, /normative versioned contract/);
+      assert.match(request.prompt, /combination, precedence, ordering, fallback, and compatibility semantics/);
+      assert.match(request.prompt, /cite both the governing requirement and the implementation branch/);
+      return {
+        output: {
+          schemaVersion: 1,
+          overall: {
+            verdict: "incomplete-implementation",
+            risk: "medium",
+            ship: false,
+            summary: "The new schemata path discards configured legacy values instead of preserving the required write order.",
+            primaryConcern: "the incomplete Intel RDT contract migration",
+          },
+          observations: [{
+            id: "normative-schemata-order",
+            title: "Preserve every configured schemata value in contract order",
+            category: "correctness",
+            severity: "medium",
+            confidence: "high",
+            principle: "An explicit conformance change must implement the prepared normative combination and ordering semantics.",
+            summary: "The early return selects the generic schemata list instead of combining it after the legacy L3 and MB values.",
+            impact: "When both representations are configured, the runtime silently drops values that the versioned contract requires it to write.",
+            recommendation: "Build one result in L3, MB, then generic schemata order without returning early when the generic list is present.",
+            tradeoffs: "Compatibility fields can be removed only in a separate contract version that explicitly stops accepting them.",
+            evidence: [{
+              citationId: "repo:read:1",
+              line: 1,
+              detail: "The prepared versioned contract requires all configured values in a fixed order.",
+            }, {
+              citationId: "repo:read:2",
+              line: 3,
+              detail: "The generic schemata branch returns before either legacy value can be included.",
+            }],
+          }],
+          strengths: [],
+        } as T,
+        provider: "fixture",
+        model: "fixture",
+      };
+    },
+  );
+
+  const result = await createApp().run({ input: { source: { path: root } }, model });
+
+  assert.equal(result.findings.length, 1);
+  assert.equal(result.findings[0]?.evidence?.length, 2);
+  assert.equal(result.opinion?.ship, false);
+});
+
+test("complete normative combination and ordering stays quiet", async () => {
+  const root = await mkdtemp(join(tmpdir(), "engineering-review-normative-order-clean-"));
+  await writeFile(
+    join(root, "runtime-spec.md"),
+    "OCI runtime-spec v1.3.0: if l3CacheSchema, memBwSchema, and schemata are set, write L3 first, MB second, and schemata values last.\n",
+  );
+  await writeFile(
+    join(root, "intel_rdt.rs"),
+    `/// Retrieves schemata data after aligning Intel RDT with OCI runtime-spec v1.3.0.
+fn get_schemata_data(intel_rdt: &LinuxIntelRdt) -> Option<String> {
+    let legacy_schemata = combine_l3_cache_and_mem_bw_schemas(
+        intel_rdt.l3_cache_schema(),
+        intel_rdt.mem_bw_schema(),
+    );
+
+    if let Some(schemata) = intel_rdt.schemata() {
+        if !schemata.is_empty() {
+            let modern_schemata = schemata.join("\\n");
+            if let Some(legacy) = legacy_schemata {
+                return Some(format!("{}\\n{}", legacy, modern_schemata));
+            }
+            return Some(modern_schemata);
+        }
+    }
+
+    legacy_schemata
+}
+`,
+  );
+  const model: ReviewModel = repositoryReviewModel(
+    ["runtime-spec.md", "intel_rdt.rs"],
+    async <T>(request: ModelReviewRequest) => {
+      assert.match(request.prompt, /every configured value and required order are preserved/);
+      return {
+        output: cleanReview as T,
+        provider: "fixture",
+        model: "fixture",
+      };
+    },
+  );
+
+  const result = await createApp().run({ input: { source: { path: root } }, model });
+
+  assert.deepEqual(result.findings, []);
+  assert.equal(result.opinion?.ship, true);
+});
+
+test("an unrelated normative requirement stays quiet", async () => {
+  const root = await mkdtemp(join(tmpdir(), "engineering-review-normative-unrelated-"));
+  await writeFile(
+    join(root, "runtime-spec.md"),
+    "OCI runtime-spec v1.3.0: runtimes MUST create a monitoring group when enableMonitoring is true.\n",
+  );
+  await writeFile(
+    join(root, "intel_rdt.rs"),
+    `fn get_schemata_data(intel_rdt: &LinuxIntelRdt) -> Option<String> {
+    combine_l3_cache_and_mem_bw_schemas(
+        intel_rdt.l3_cache_schema(),
+        intel_rdt.mem_bw_schema(),
+    )
+}
+`,
+  );
+  const model: ReviewModel = repositoryReviewModel(
+    ["runtime-spec.md", "intel_rdt.rs"],
+    async <T>(request: ModelReviewRequest) => {
+      assert.match(request.prompt, /prepared requirement does not govern the changed path/);
+      return {
+        output: cleanReview as T,
+        provider: "fixture",
+        model: "fixture",
+      };
+    },
+  );
+
+  const result = await createApp().run({ input: { source: { path: root } }, model });
+
+  assert.deepEqual(result.findings, []);
+  assert.equal(result.opinion?.ship, true);
+});
+
+test("a comment-only normative edit stays quiet", async () => {
+  const root = await mkdtemp(join(tmpdir(), "engineering-review-normative-comment-"));
+  await writeFile(
+    join(root, "intel_rdt.rs"),
+    `/// OCI runtime-spec v1.3.0 keeps legacy schemata compatibility.
+fn get_schemata_data(intel_rdt: &LinuxIntelRdt) -> Option<String> {
+    combine_l3_cache_and_mem_bw_schemas(
+        intel_rdt.l3_cache_schema(),
+        intel_rdt.mem_bw_schema(),
+    )
+}
+`,
+  );
+  const model: ReviewModel = repositoryReviewModel(
+    ["intel_rdt.rs"],
+    async <T>(request: ModelReviewRequest) => {
+      const wrapped = request.input as {
+        reviewInput?: { reviewScope?: { changedFiles?: string[] } };
+      };
+      assert.deepEqual(wrapped.reviewInput?.reviewScope?.changedFiles, ["intel_rdt.rs"]);
+      assert.match(request.prompt, /wording, naming, or repository layout/);
+      return {
+        output: cleanReview as T,
+        provider: "fixture",
+        model: "fixture",
+      };
+    },
+  );
+
+  const result = await createApp().run({
+    input: {
+      source: { path: root },
+      change: {
+        type: "diff",
+        base_ref: "base",
+        head_ref: "head",
+        scan_mode: "changed",
+        changed_files: ["intel_rdt.rs"],
+      },
+    },
+    model,
+  });
+
+  assert.deepEqual(result.findings, []);
+  assert.equal(result.opinion?.ship, true);
+});
+
 test("release-disabled framing checks before partial decoding are reviewable", async () => {
   const root = await mkdtemp(join(tmpdir(), "engineering-review-decoder-framing-"));
   await writeFile(

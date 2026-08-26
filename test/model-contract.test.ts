@@ -47,6 +47,18 @@ test("prompt preserves per-entity constraint semantics", () => {
   assert.match(ENGINEERING_REVIEW_PROMPT, /explicit system-wide invariant/);
 });
 
+test("prompt checks explicit conformance against exact normative semantics", () => {
+  assert.match(ENGINEERING_REVIEW_PROMPT, /explicitly claims conformance or migration to a normative versioned contract/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /exact combination, precedence, ordering, fallback, and compatibility semantics/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /prepared specification text or repository-owned contract material/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /concrete mismatch with a reachable effect/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /cite both the governing requirement and the implementation branch/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /every configured value and required order are preserved/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /prepared requirement does not govern the changed path/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /wording, naming, or repository layout/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /separate issues for each field/);
+});
+
 test("prompt preserves value metadata on alternate paths", () => {
   assert.match(
     ENGINEERING_REVIEW_PROMPT,
