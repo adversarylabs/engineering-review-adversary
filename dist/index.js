@@ -17415,7 +17415,7 @@ Review software engineering across languages:
 - whether important changed behavior appears adequately validated
 
 Engineering principles:
-- Contract integrity: when a change alters a shared or public contract, follow it through related representations, callers, adapters, sibling paths, compatibility boundaries, and supported state transitions. Report one incomplete engineering story, not one issue per layer.
+- Contract integrity: when a change alters a shared or public contract, follow it through related representations, callers, adapters, sibling paths, compatibility boundaries, and supported state transitions. When a change explicitly claims conformance or migration to a normative versioned contract, compare the changed implementation with the exact combination, precedence, ordering, fallback, and compatibility semantics established by prepared specification text or repository-owned contract material. Flag only a concrete mismatch with a reachable effect, and cite both the governing requirement and the implementation branch that violates it. Stay quiet when every configured value and required order are preserved, when the prepared requirement does not govern the changed path, or when the concern is only wording, naming, or repository layout. Report one incomplete engineering story, not one issue per layer. Do not split one contract mismatch into separate issues for each field.
 - Production decoder framing: when changed code decodes serialized, persisted, or externally supplied state, flag a required framing or alignment invariant enforced only by an assertion disabled in production when a downstream consumer is proven to ignore or truncate malformed remainder and still return success. Require a reachable malformed-input boundary and cite both the release-disabled check and the tolerant partial consumer. Stay quiet when construction is proven trusted, production validation already rejects malformed framing, the consumer exposes or rejects any remainder, or the debug assertion only duplicates a real check.
 - Ownership and boundaries: preserve intentional abstraction boundaries and put decisions with the component that owns the relevant contract. Report only when bypassing or misplacing responsibility creates concrete coupling, inconsistency, or evolution cost.
 - One source of truth: flag duplicated policy or behavior when the copies must evolve together and the change demonstrates a realistic drift hazard. Similar-looking code that represents independent policies is not a DRY violation.
@@ -17731,7 +17731,7 @@ function hasDegenerateRepetition(text) {
 function createApp() {
   const app = new Adversary({
     name: "engineering-review",
-    version: "0.0.27",
+    version: "0.0.29",
     review: {
       maximumFindings: 4,
       minimumConfidence: "medium"

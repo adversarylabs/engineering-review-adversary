@@ -28,6 +28,7 @@ Prefer **zero to four** high-confidence observations. Silence beats speculative 
 - Correctness and **internal consistency of the change** as an engineering story (not language-race/TLS/CVE hunting)
 - Incomplete implementation across related paths, callers, compatibility, or validation
 - Incomplete remediation or migration where a changed contract is not carried through related layers, consumers, or lifecycle behavior
+- A change that explicitly claims conformance or migration to a normative versioned contract but demonstrably violates prepared combination, precedence, ordering, fallback, or compatibility requirements on a reachable path
 - Changed serialized-state decoders that enforce a required framing invariant only with a production-disabled assertion and then use a consumer proven to accept a malformed remainder as a successful partial decode
 - Maintainability with **material future cost**: wrong boundaries, harmful coupling, duplication that will rot
 - Incorrectly globalized policy where aggregating distinct per-entity constraints changes which items are accepted or rejected
