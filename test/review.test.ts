@@ -1066,6 +1066,185 @@ test("approval followed by a mutable re-fetch before trusted publication is revi
   assert.equal(result.opinion?.ship, false);
 });
 
+test("an independent setup failure that skips a required disable effect is reviewable", async () => {
+  const root = await mkdtemp(join(tmpdir(), "engineering-review-failure-path-"));
+  await writeFile(
+    join(root, "tracing.py"),
+    `def configure_app_tracing(app, keep_native_exporter):
+    try:
+        configure_tracing(app)
+        if not keep_native_exporter:
+            remove_native_exporter()
+    except Exception as error:
+        logger.error("Failed to configure tracing: %s", error)
+`,
+  );
+  const model: ReviewModel = repositoryReviewModel(
+    ["tracing.py"],
+    async <T>(request: ModelReviewRequest) => {
+      assert.match(request.prompt, /required disable, unregister, restore, or cleanup effect/);
+      assert.match(request.prompt, /failure path skips that required effect/);
+      assert.match(request.prompt, /Cite the failing predecessor and skipped effect together/);
+      return {
+        output: {
+          schemaVersion: 1,
+          overall: {
+            verdict: "incomplete-implementation",
+            risk: "medium",
+            ship: false,
+            summary: "A tracing setup failure leaves the native exporter enabled even when this path requires removing it.",
+            primaryConcern: "the skipped native-exporter disable path",
+          },
+          observations: [{
+            id: "required-disable-skipped-after-setup-failure",
+            title: "Remove the native exporter even when replacement setup fails",
+            category: "correctness",
+            severity: "medium",
+            confidence: "high",
+            principle: "An independent failure must not skip a required lifecycle effect and preserve the behavior the change intends to remove.",
+            summary: "configure_tracing can throw before remove_native_exporter executes, and the shared exception handler then returns with the native exporter still active.",
+            impact: "The application can continue exporting through the native path despite keep_native_exporter being false.",
+            recommendation: "Run replacement setup and native-exporter removal in independent guarded blocks, or guarantee the removal in cleanup if they share ownership.",
+            tradeoffs: "Keep the operations coupled only if source evidence establishes that removal is invalid unless replacement setup succeeds.",
+            evidence: [{
+              citationId: "repo:read:1",
+              line: 3,
+              detail: "Replacement tracing setup can raise before the required disable branch.",
+            }, {
+              citationId: "repo:read:1",
+              line: 5,
+              detail: "Native exporter removal is sequenced after the independent failing call.",
+            }],
+          }],
+          strengths: [],
+        } as T,
+        provider: "fixture",
+        model: "fixture",
+      };
+    },
+  );
+
+  const result = await createApp().run({
+    input: {
+      source: { path: root },
+      change: {
+        type: "diff",
+        base_ref: "base",
+        head_ref: "head",
+        scan_mode: "changed",
+        changed_files: ["tracing.py"],
+      },
+    },
+    model,
+  });
+
+  assert.equal(result.findings.length, 1);
+  assert.equal(result.findings[0]?.evidence?.length, 2);
+  assert.equal(result.opinion?.ship, false);
+});
+
+test("failure-path lifecycle controls stay quiet when no required effect can be skipped", async () => {
+  const cases = [{
+    name: "independent-guards",
+    source: `def configure_app_tracing(app, keep_native_exporter):
+    try:
+        configure_tracing(app)
+    except Exception as error:
+        logger.error("Failed to configure tracing: %s", error)
+    try:
+        if not keep_native_exporter:
+            remove_native_exporter()
+    except Exception as error:
+        logger.error("Failed to configure native exporter: %s", error)
+`,
+    reason: "The accepted structure attempts the independent disable effect even when general tracing setup fails.",
+  }, {
+    name: "dependent-effect",
+    source: `def configure_exporter(app):
+    try:
+        replacement = configure_tracing(app)
+        replacement.disable_native_bridge()
+    except Exception as error:
+        logger.error("Replacement setup failed: %s", error)
+`,
+    reason: "The later operation belongs to the replacement object and cannot run when its construction fails.",
+  }, {
+    name: "guaranteed-cleanup",
+    source: `def replace_exporter(app):
+    try:
+        configure_tracing(app)
+    finally:
+        remove_native_exporter()
+`,
+    reason: "The required removal is guaranteed by cleanup.",
+  }];
+
+  for (const sample of cases) {
+    const root = await mkdtemp(join(tmpdir(), `engineering-review-failure-path-${sample.name}-`));
+    await writeFile(join(root, "tracing.py"), sample.source);
+    const model: ReviewModel = repositoryReviewModel(
+      ["tracing.py"],
+      async <T>(request: ModelReviewRequest) => {
+        assert.match(request.prompt, /later effect depends on successful setup/);
+        assert.match(request.prompt, /cleanup or rollback is already guaranteed/);
+        return {
+          output: {
+            ...cleanReview,
+            overall: { ...cleanReview.overall, summary: sample.reason },
+          } as T,
+          provider: "fixture",
+          model: "fixture",
+        };
+      },
+    );
+
+    const result = await createApp().run({
+      input: { source: { path: root } },
+      model,
+    });
+
+    assert.deepEqual(result.findings, [], sample.name);
+    assert.equal(result.opinion?.ship, true, sample.name);
+  }
+});
+
+test("a comment-only failure-path edit stays quiet", async () => {
+  const root = await mkdtemp(join(tmpdir(), "engineering-review-failure-path-comment-"));
+  await writeFile(
+    join(root, "tracing.py"),
+    `def configure_app_tracing(app):
+    try:
+        configure_tracing(app)
+    finally:
+        remove_native_exporter()  # Always restore the required exporter state.
+`,
+  );
+  const model: ReviewModel = repositoryReviewModel(
+    ["tracing.py"],
+    async <T>(request: ModelReviewRequest) => {
+      assert.match(request.prompt, /requirement is inferred only from convention/);
+      return { output: cleanReview as T, provider: "fixture", model: "fixture" };
+    },
+  );
+
+  const result = await createApp().run({
+    input: {
+      source: { path: root },
+      change: {
+        type: "diff",
+        base_ref: "base",
+        head_ref: "head",
+        scan_mode: "changed",
+        changed_files: ["tracing.py"],
+      },
+    },
+    model,
+  });
+
+  assert.deepEqual(result.findings, []);
+  assert.equal(result.opinion?.ship, true);
+});
+
 test("identity comparison before trusted publication keeps mutable re-fetch quiet", async () => {
   const root = await mkdtemp(join(tmpdir(), "engineering-review-pinned-approval-"));
   await writeFile(
