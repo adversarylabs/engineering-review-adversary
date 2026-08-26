@@ -184,6 +184,18 @@ test("prompt binds approval of mutable content to an immutable artifact identity
   );
 });
 
+test("prompt preserves required effects across independent setup failures", () => {
+  assert.match(ENGINEERING_REVIEW_PROMPT, /required disable, unregister, restore, or cleanup effect/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /independent operation that can fail or return first/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /failure path skips that required effect/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /concrete contradictory behavior reachable/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /Cite the failing predecessor and skipped effect together/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /independent guarded execution, guaranteed cleanup, or a transaction/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /later effect depends on successful setup/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /cleanup or rollback is already guaranteed/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /requirement is inferred only from convention/);
+});
+
 test("prompt requires applicable constraints on derived effective values", () => {
   assert.match(
     ENGINEERING_REVIEW_PROMPT,
