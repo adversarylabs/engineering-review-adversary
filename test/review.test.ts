@@ -2210,7 +2210,21 @@ test("declared resolver probes missing from the deployed listener are reviewable
     model,
   });
   assert.equal(result.findings.length, 1);
-  assert.equal(result.findings[0]?.evidence?.length, 4);
+  assert.equal(result.findings[0]?.evidence?.length, 7);
+  assert.deepEqual(
+    [...new Set(result.findings[0]?.evidence
+      ?.map((item) => item.location?.file)
+      .filter((file): file is string => file !== undefined))].sort(),
+    [
+      "charts/elasti/templates/deployment.yaml",
+      "resolver/Dockerfile",
+      "resolver/cmd/main.go",
+    ],
+  );
+  assert.equal(
+    result.findings[0]?.evidence?.every((item) => (item.location?.line ?? 0) > 1),
+    true,
+  );
   assert.equal(result.opinion?.ship, false);
 });
 
@@ -2279,6 +2293,54 @@ spec:
         head_ref: "head",
         scan_mode: "changed",
         changed_files: ["charts/gateway/templates/deployment.yaml"],
+      },
+    },
+    model,
+  });
+  assert.deepEqual(result.findings, []);
+  assert.equal(result.opinion?.ship, true);
+});
+
+test("Helm template functions alone do not justify generic validation findings", async () => {
+  const root = await mkdtemp(join(tmpdir(), "engineering-review-helm-generic-"));
+  const path = join(root, "charts", "service", "templates");
+  await mkdir(path, { recursive: true });
+  await writeFile(join(path, "deployment.yaml"), `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "service.fullname" . }}
+spec:
+  replicas: {{ .Values.replicas }}
+  template:
+    spec:
+      containers:
+      - name: service
+        image: {{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+`);
+  const model: ReviewModel = repositoryReviewModel(
+    ["charts/service/templates/deployment.yaml"],
+    async <T>(request: ModelReviewRequest) => {
+      assert.match(request.prompt, /Template syntax or functions alone are not a defect/);
+      assert.match(request.prompt, /Do not report that Helm templates need generic rendering, schema validation, or tests/);
+      return {
+        output: cleanReview as T,
+        provider: "fixture",
+        model: "fixture",
+      };
+    },
+  );
+
+  const result = await createApp().run({
+    input: {
+      source: { path: root },
+      change: {
+        type: "diff",
+        base_ref: "base",
+        head_ref: "head",
+        scan_mode: "changed",
+        changed_files: ["charts/service/templates/deployment.yaml"],
       },
     },
     model,
