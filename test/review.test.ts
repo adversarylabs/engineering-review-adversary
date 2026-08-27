@@ -323,6 +323,115 @@ test("generalized contract guidance supports one cross-layer finding", async () 
   assert.equal(result.opinion?.ship, false);
 });
 
+test("an accepted configuration field with proven no-op semantics is reviewable", async () => {
+  const root = await mkdtemp(join(tmpdir(), "engineering-review-noop-config-"));
+  await writeFile(
+    join(root, "dhcp-design.md"),
+    `# DHCP mode
+
+| Mode | Subnets field |
+| --- | --- |
+| DHCP | Optional |
+
+When DHCP mode is selected, configuring subnets or omitting subnets makes no
+functional difference. The generated downstream network definition does not
+contain subnets, so consumers cannot use the supplied value for features or
+validation.
+`,
+  );
+  const model: ReviewModel = repositoryReviewModel(
+    ["dhcp-design.md"],
+    async <T>(request: ModelReviewRequest) => {
+      assert.match(request.prompt, /accepts a field in a specific mode or state/);
+      assert.match(request.prompt, /supplying the field has no effect/);
+      assert.match(request.prompt, /forbidding that combination or implementing explicit, verifiable semantics/);
+      return {
+        output: {
+          schemaVersion: 1,
+          overall: {
+            verdict: "incomplete-implementation",
+            risk: "medium",
+            ship: false,
+            summary: "The DHCP contract accepts a subnet value that the generated representation discards.",
+            primaryConcern: "the misleading no-op subnet contract",
+          },
+          observations: [{
+            id: "noop-dhcp-subnets",
+            title: "DHCP accepts a subnet value it discards",
+            category: "completeness",
+            severity: "medium",
+            confidence: "high",
+            principle: "Accepted configuration should either affect behavior or be rejected at the contract boundary.",
+            summary: "Subnets is optional in DHCP mode even though supplying it has no effect and the downstream representation omits it.",
+            impact: "Users can provide a value that appears authoritative while every consumer behaves as if it were absent.",
+            recommendation: "Forbid subnets in DHCP mode or define and implement explicit validation or downstream semantics for it.",
+            tradeoffs: "Forbidding the field now preserves room to loosen the contract later without silently accepting misleading input.",
+            evidence: [{
+              citationId: "repo:read:1",
+              line: 5,
+              detail: "The mode table declares the subnets field optional for DHCP.",
+            }, {
+              citationId: "repo:read:1",
+              line: 8,
+              detail: "The design says the supplied value makes no functional difference and is absent downstream.",
+            }],
+          }],
+          strengths: [],
+        } as T,
+        provider: "fixture",
+        model: "fixture",
+      };
+    },
+  );
+
+  const result = await createApp().run({
+    input: { source: { path: root } },
+    model,
+  });
+
+  assert.equal(result.findings.length, 1);
+  assert.equal(result.findings[0]?.ruleId, "engineering-review.completeness");
+  assert.equal(result.findings[0]?.evidence?.length, 2);
+  assert.equal(result.opinion?.ship, false);
+});
+
+test("a mode that forbids an otherwise meaningless field is contract-complete", async () => {
+  const root = await mkdtemp(join(tmpdir(), "engineering-review-forbidden-config-"));
+  await writeFile(
+    join(root, "dhcp-design.md"),
+    `# DHCP mode
+
+| Mode | Subnets field |
+| --- | --- |
+| DHCP | Forbidden |
+
+Validation rejects subnets when DHCP mode is selected because addresses come
+from the external DHCP server. The generated network definition therefore has
+one unambiguous source of addressing information.
+`,
+  );
+  const model: ReviewModel = repositoryReviewModel(
+    ["dhcp-design.md"],
+    async <T>(request: ModelReviewRequest) => {
+      assert.match(request.prompt, /recommend either forbidding that combination/);
+      assert.match(request.prompt, /fields that drive real validation/);
+      return {
+        output: cleanReview as T,
+        provider: "fixture",
+        model: "fixture",
+      };
+    },
+  );
+
+  const result = await createApp().run({
+    input: { source: { path: root } },
+    model,
+  });
+
+  assert.deepEqual(result.findings, []);
+  assert.equal(result.opinion?.ship, true);
+});
+
 test("a cached alternate path that cannot prepare the same action twice is reviewable", async () => {
   const root = await mkdtemp(join(tmpdir(), "engineering-review-repeated-cache-"));
   await writeFile(

@@ -42,6 +42,7 @@ Prefer **zero to four** high-confidence observations. Silence beats speculative 
 - Test or integration harnesses proven directly runnable on a developer or persistent runner host that combine privileged persistent host mutation with live service or global-workload control and lack a dominating hosted-ephemeral-CI, explicit opt-in, disposable-environment, or existing-service refusal boundary; a CI marker or self-hosted runner label alone is not containment
 - Abstraction that is **disproportionate and** creates a real engineering problem (if the only point is “too much machinery,” prefer `review/complexity`)
 - Architectural fit, dependency direction, layering violations in product code
+- Changed public or shared configuration that accepts a field in a particular mode even though prepared declaration and consumer evidence prove the value has no effect and downstream cannot observe or rely on it; forbid the combination or give it explicit semantics rather than exposing a misleading no-op
 - Operational risk: blast radius, hidden behavior, rollout/rollback difficulty
 - Important **changed** behavior whose invariant is not actually proved — name the behavior and missing proof; do not demand “more tests” generically
 - Readability of intent **only when** confusion creates real correctness, contract, or ops risk (not bikeshed naming)
