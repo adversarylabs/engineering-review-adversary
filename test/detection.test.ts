@@ -39,6 +39,8 @@ test("source detection includes supported languages and excludes generated depen
     "test/integration/suites/slurm-x509/teardown",
     "Makefile",
     "README.md",
+    "charts/elasti/templates/deployment.yaml",
+    "platform/charts/service/templates/workload.yml",
     "Dockerfile",
     ".github/workflows/ci.yml",
   ]) {
@@ -55,6 +57,8 @@ test("source detection includes supported languages and excludes generated depen
     "dist/app.js",
     "fixtures/risky/src/main.rs",
     "testdata/incomplete/main.go",
+    "deploy/deployment.yaml",
+    "charts/elasti/values.yaml",
     "src/generated.g.cs",
   ]) {
     assert.equal(isReviewableSource(path), false, path);

@@ -14,6 +14,7 @@ test("prompt defines staff-level authority and specialist boundaries", () => {
   assert.match(ENGINEERING_REVIEW_PROMPT, /repository tools/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /citationId/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /Contract integrity/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /Declared operational targets/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /Ownership and boundaries/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /One source of truth/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /Constraint scope/);
@@ -29,6 +30,23 @@ test("prompt defines staff-level authority and specialist boundaries", () => {
     ENGINEERING_REVIEW_PROMPT,
     /initConfig|g\.spec|OpenForRead|dest\.append|goroutine|context\.Background/,
   );
+});
+
+test("prompt binds declared health paths to a proven local listener surface", () => {
+  assert.match(ENGINEERING_REVIEW_PROMPT, /literal HTTP liveness, readiness, or health path/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /repository-built service/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /deployed binary owns a particular listener and route-registration surface/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /exact path has no reachable registration on that listener/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /Cite the declaration, the local binary ownership evidence, and the listener or route surface together/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /image or binary is external or ownership is unresolved/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /path is templated or dynamically derived/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /probe is TCP, gRPC, or exec based/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /framework or platform is proven to provide the endpoint/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /declaration is proven to target another container, sidecar, port, listener, or process not owned by the prepared binary/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /reachable direct route, helper registration, or broader route pattern on the applicable listener/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /complete applicable registration surface/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /documentation, comments, tests, or an unrelated listener is not handler proof/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /absence is never inferred from a partial source view/);
 });
 
 test("prompt preserves per-entity constraint semantics", () => {
@@ -277,6 +295,8 @@ test("model request delegates bounded repository retrieval to the SDK", () => {
     "Dockerfile",
     "Vagrantfile",
     ".github/workflows/**/*.yaml",
+    "charts/**/templates/*.yaml",
+    "**/charts/**/templates/**/*.yml",
   ]) {
     assert.equal(
       (request.tools?.repository?.include as readonly string[] | undefined)?.includes(pattern),

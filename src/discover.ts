@@ -35,6 +35,14 @@ export const TRIGGER_PATTERNS = [
   "**/GNUmakefile",
   "*.md",
   "**/*.md",
+  "charts/**/templates/*.yml",
+  "charts/**/templates/*.yaml",
+  "charts/**/templates/**/*.yml",
+  "charts/**/templates/**/*.yaml",
+  "**/charts/**/templates/*.yml",
+  "**/charts/**/templates/*.yaml",
+  "**/charts/**/templates/**/*.yml",
+  "**/charts/**/templates/**/*.yaml",
   "**/integration/**/00-setup",
   "**/integration/**/01-start-server",
   "**/integration/**/02-bootstrap-agent",
@@ -98,6 +106,7 @@ export function isReviewableSource(path: string): boolean {
     return true;
   }
   if (/\.github\/workflows\/.*\.ya?ml$/i.test(normalized)) return true;
+  if (/(?:^|\/)charts\/.*\/templates\/.*\.ya?ml$/i.test(normalized)) return true;
   if (
     segments.includes("integration") &&
     /^(?:00-setup|01-start-server|02-bootstrap-agent|03-start-agent|04-submit-job|05-create-entry|06-verify-fetch|teardown)$/.test(name)
