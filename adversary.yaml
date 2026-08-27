@@ -1,5 +1,5 @@
 name: review/engineering
-version: 0.0.32
+version: 0.0.33
 description: Reviews proposed changes with Staff-level engineering judgment across languages.
 
 triggers:
@@ -39,6 +39,14 @@ triggers:
     - "**/GNUmakefile"
     - "*.md"
     - "**/*.md"
+    - "charts/**/templates/*.yml"
+    - "charts/**/templates/*.yaml"
+    - "charts/**/templates/**/*.yml"
+    - "charts/**/templates/**/*.yaml"
+    - "**/charts/**/templates/*.yml"
+    - "**/charts/**/templates/*.yaml"
+    - "**/charts/**/templates/**/*.yml"
+    - "**/charts/**/templates/**/*.yaml"
     - "**/integration/**/00-setup"
     - "**/integration/**/01-start-server"
     - "**/integration/**/02-bootstrap-agent"
@@ -84,6 +92,14 @@ detection:
     - "**/GNUmakefile"
     - "*.md"
     - "**/*.md"
+    - "charts/**/templates/*.yml"
+    - "charts/**/templates/*.yaml"
+    - "charts/**/templates/**/*.yml"
+    - "charts/**/templates/**/*.yaml"
+    - "**/charts/**/templates/*.yml"
+    - "**/charts/**/templates/*.yaml"
+    - "**/charts/**/templates/**/*.yml"
+    - "**/charts/**/templates/**/*.yaml"
     - "**/integration/**/00-setup"
     - "**/integration/**/01-start-server"
     - "**/integration/**/02-bootstrap-agent"

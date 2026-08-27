@@ -2066,3 +2066,223 @@ test("a comment-only edit beside a legacy invalid default stays quiet", async ()
   assert.deepEqual(result.findings, []);
   assert.equal(result.opinion?.ship, true);
 });
+
+const resolverDeploymentWithProbes = `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: elasti-resolver
+spec:
+  template:
+    spec:
+      containers:
+      - command:
+        - /resolver
+        image: registry.example/elasti-resolver:v1
+        name: proxy
+        ports:
+        - containerPort: {{ .Values.elastiResolver.service.port }}
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: {{ .Values.elastiResolver.service.port }}
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: {{ .Values.elastiResolver.service.port }}
+`;
+
+const resolverDockerfile = `FROM golang:1.24.6 AS builder
+WORKDIR /workspace
+COPY ./resolver/ .
+RUN CGO_ENABLED=0 GOOS=linux go build -o resolver cmd/main.go
+FROM gcr.io/distroless/static:nonroot
+COPY --from=builder /workspace/resolver .
+ENTRYPOINT ["/resolver"]
+`;
+
+const resolverMainWithoutProbes = `package main
+
+import "net/http"
+
+func main() {
+	internalPort := resolverConfig().Port
+	internalServeMux := http.NewServeMux()
+	internalServeMux.Handle("/metrics", metricsHandler())
+	internalServeMux.Handle("/queue-status", queueHandler())
+	internalServer := &http.Server{Addr: internalPort, Handler: internalServeMux}
+	internalServer.ListenAndServe()
+}
+`;
+
+const resolverMainWithProbes = `package main
+
+import "net/http"
+
+func main() {
+	internalPort := resolverConfig().Port
+	internalServeMux := http.NewServeMux()
+	internalServeMux.Handle("/metrics", metricsHandler())
+	internalServeMux.Handle("/queue-status", queueHandler())
+	internalServeMux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
+	internalServeMux.HandleFunc("/readyz", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
+	internalServer := &http.Server{Addr: internalPort, Handler: internalServeMux}
+	internalServer.ListenAndServe()
+}
+`;
+
+async function writeResolverProbeFixture(root: string, mainSource: string): Promise<void> {
+  await mkdir(join(root, "charts", "elasti", "templates"), { recursive: true });
+  await mkdir(join(root, "resolver", "cmd"), { recursive: true });
+  await writeFile(join(root, "charts", "elasti", "templates", "deployment.yaml"), resolverDeploymentWithProbes);
+  await writeFile(join(root, "resolver", "Dockerfile"), resolverDockerfile);
+  await writeFile(join(root, "resolver", "cmd", "main.go"), mainSource);
+}
+
+test("declared resolver probes missing from the deployed listener are reviewable", async () => {
+  const root = await mkdtemp(join(tmpdir(), "engineering-review-probe-target-"));
+  await writeResolverProbeFixture(root, resolverMainWithoutProbes);
+  const model: ReviewModel = repositoryReviewModel(
+    ["charts/elasti/templates/deployment.yaml", "resolver/Dockerfile", "resolver/cmd/main.go"],
+    async <T>(request: ModelReviewRequest) => {
+      assert.match(request.prompt, /Declared operational targets/);
+      const prepared = JSON.stringify(request.input);
+      assert.match(prepared, /healthz/);
+      assert.match(prepared, /ENTRYPOINT/);
+      assert.match(prepared, /internalServeMux/);
+      return {
+        output: {
+          schemaVersion: 1,
+          overall: {
+            verdict: "incomplete-implementation",
+            risk: "medium",
+            ship: false,
+            summary: "The deployment probes target literal paths that the repository-built resolver does not register on its internal listener.",
+            primaryConcern: "the unimplemented resolver probe endpoints",
+          },
+          observations: [{
+            id: "missing-resolver-probe-routes",
+            title: "Implement the declared resolver probe routes",
+            category: "completeness",
+            severity: "medium",
+            confidence: "high",
+            principle: "Operational declarations for a locally built service must match that binary's reachable listener surface.",
+            summary: "The resolver Deployment declares /healthz and /readyz, while the deployed /resolver binary's internal mux registers only metrics and queue-status.",
+            impact: "Kubernetes will repeatedly fail both probes and keep otherwise running resolver pods unavailable or restart them.",
+            recommendation: "Register both handlers on internalServeMux before starting internalServer, or change the probes to endpoints that listener actually implements.",
+            tradeoffs: "Dedicated trivial handlers keep probe semantics independent of metrics and proxy traffic.",
+            evidence: [{
+              citationId: "repo:read:1",
+              line: 17,
+              detail: "The changed Deployment declares the literal /healthz probe on the resolver service port.",
+            }, {
+              citationId: "repo:read:1",
+              line: 10,
+              detail: "The probed container starts the /resolver binary.",
+            }, {
+              citationId: "repo:read:2",
+              line: 4,
+              detail: "The repository builds resolver/cmd/main.go into the resolver artifact.",
+            }, {
+              citationId: "repo:read:3",
+              line: 7,
+              detail: "The applicable internal mux is complete here and lacks both declared probe paths.",
+            }],
+          }],
+          strengths: [],
+        } as T,
+        provider: "fixture",
+        model: "fixture",
+      };
+    },
+  );
+
+  const result = await createApp().run({
+    input: {
+      source: { path: root },
+      change: {
+        type: "diff",
+        base_ref: "base",
+        head_ref: "head",
+        scan_mode: "changed",
+        changed_files: ["charts/elasti/templates/deployment.yaml"],
+      },
+    },
+    model,
+  });
+  assert.equal(result.findings.length, 1);
+  assert.equal(result.findings[0]?.evidence?.length, 4);
+  assert.equal(result.opinion?.ship, false);
+});
+
+test("registered resolver probe handlers keep the same declaration quiet", async () => {
+  const root = await mkdtemp(join(tmpdir(), "engineering-review-probe-target-clean-"));
+  await writeResolverProbeFixture(root, resolverMainWithProbes);
+  const model: ReviewModel = repositoryReviewModel(
+    ["charts/elasti/templates/deployment.yaml", "resolver/Dockerfile", "resolver/cmd/main.go"],
+    async <T>(request: ModelReviewRequest) => {
+      assert.match(request.prompt, /reachable direct route, helper registration, or broader route pattern on the applicable listener/);
+      const prepared = JSON.stringify(request.input);
+      assert.match(prepared, /HandleFunc.*healthz/);
+      assert.match(prepared, /HandleFunc.*readyz/);
+      return {
+        output: cleanReview as T,
+        provider: "fixture",
+        model: "fixture",
+      };
+    },
+  );
+
+  const result = await createApp().run({
+    input: { source: { path: root } },
+    model,
+  });
+  assert.deepEqual(result.findings, []);
+  assert.equal(result.opinion?.ship, true);
+});
+
+test("external images and templated probe paths do not establish a missing local route", async () => {
+  const root = await mkdtemp(join(tmpdir(), "engineering-review-probe-target-unowned-"));
+  const path = join(root, "charts", "gateway", "templates");
+  await mkdir(path, { recursive: true });
+  await writeFile(join(path, "deployment.yaml"), `apiVersion: apps/v1
+kind: Deployment
+spec:
+  template:
+    spec:
+      containers:
+      - name: gateway
+        image: vendor.example/gateway:v4
+        livenessProbe:
+          httpGet:
+            path: {{ .Values.gateway.livenessPath }}
+            port: 8080
+`);
+  const model: ReviewModel = repositoryReviewModel(
+    ["charts/gateway/templates/deployment.yaml"],
+    async <T>(request: ModelReviewRequest) => {
+      assert.match(request.prompt, /image or binary is external or ownership is unresolved/);
+      assert.match(request.prompt, /path is templated or dynamically derived/);
+      return {
+        output: cleanReview as T,
+        provider: "fixture",
+        model: "fixture",
+      };
+    },
+  );
+
+  const result = await createApp().run({
+    input: {
+      source: { path: root },
+      change: {
+        type: "diff",
+        base_ref: "base",
+        head_ref: "head",
+        scan_mode: "changed",
+        changed_files: ["charts/gateway/templates/deployment.yaml"],
+      },
+    },
+    model,
+  });
+  assert.deepEqual(result.findings, []);
+  assert.equal(result.opinion?.ship, true);
+});

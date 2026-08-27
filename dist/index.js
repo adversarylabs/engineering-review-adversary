@@ -17142,6 +17142,14 @@ var TRIGGER_PATTERNS = [
   "**/GNUmakefile",
   "*.md",
   "**/*.md",
+  "charts/**/templates/*.yml",
+  "charts/**/templates/*.yaml",
+  "charts/**/templates/**/*.yml",
+  "charts/**/templates/**/*.yaml",
+  "**/charts/**/templates/*.yml",
+  "**/charts/**/templates/*.yaml",
+  "**/charts/**/templates/**/*.yml",
+  "**/charts/**/templates/**/*.yaml",
   "**/integration/**/00-setup",
   "**/integration/**/01-start-server",
   "**/integration/**/02-bootstrap-agent",
@@ -17197,6 +17205,7 @@ function isReviewableSource(path) {
     return true;
   }
   if (/\.github\/workflows\/.*\.ya?ml$/i.test(normalized)) return true;
+  if (/(?:^|\/)charts\/.*\/templates\/.*\.ya?ml$/i.test(normalized)) return true;
   if (segments.includes("integration") && /^(?:00-setup|01-start-server|02-bootstrap-agent|03-start-agent|04-submit-job|05-create-entry|06-verify-fetch|teardown)$/.test(name)) {
     return true;
   }
@@ -17416,6 +17425,7 @@ Review software engineering across languages:
 
 Engineering principles:
 - Contract integrity: when a change alters a shared or public contract, follow it through related representations, callers, adapters, sibling paths, compatibility boundaries, and supported state transitions. When a change explicitly claims conformance or migration to a normative versioned contract, compare the changed implementation with the exact combination, precedence, ordering, fallback, and compatibility semantics established by prepared specification text or repository-owned contract material. Flag only a concrete mismatch with a reachable effect, and cite both the governing requirement and the implementation branch that violates it. Stay quiet when every configured value and required order are preserved, when the prepared requirement does not govern the changed path, or when the concern is only wording, naming, or repository layout. Report one incomplete engineering story, not one issue per layer. Do not split one contract mismatch into separate issues for each field.
+- Declared operational targets: when changed deployment or runtime configuration declares a literal HTTP liveness, readiness, or health path for a repository-built service, require prepared source to prove that the deployed binary owns a particular listener and route-registration surface before reporting that the exact path has no reachable registration on that listener. Cite the declaration, the local binary ownership evidence, and the listener or route surface together as one cross-artifact completeness finding. Stay quiet when the image or binary is external or ownership is unresolved; the path is templated or dynamically derived; the probe is TCP, gRPC, or exec based; a framework or platform is proven to provide the endpoint; the declaration is proven to target another container, sidecar, port, listener, or process not owned by the prepared binary; a reachable direct route, helper registration, or broader route pattern on the applicable listener matches the declared path; or prepared sources do not expose the complete applicable registration surface. A matching string in documentation, comments, tests, or an unrelated listener is not handler proof, but absence is never inferred from a partial source view.
 - Production decoder framing: when changed code decodes serialized, persisted, or externally supplied state, flag a required framing or alignment invariant enforced only by an assertion disabled in production when a downstream consumer is proven to ignore or truncate malformed remainder and still return success. Require a reachable malformed-input boundary and cite both the release-disabled check and the tolerant partial consumer. Stay quiet when construction is proven trusted, production validation already rejects malformed framing, the consumer exposes or rejects any remainder, or the debug assertion only duplicates a real check.
 - Ownership and boundaries: preserve intentional abstraction boundaries and put decisions with the component that owns the relevant contract. Report only when bypassing or misplacing responsibility creates concrete coupling, inconsistency, or evolution cost.
 - One source of truth: flag duplicated policy or behavior when the copies must evolve together and the change demonstrates a realistic drift hazard. Similar-looking code that represents independent policies is not a DRY violation.
@@ -17732,7 +17742,7 @@ function hasDegenerateRepetition(text) {
 function createApp() {
   const app = new Adversary({
     name: "engineering-review",
-    version: "0.0.32",
+    version: "0.0.33",
     review: {
       maximumFindings: 4,
       minimumConfidence: "medium"

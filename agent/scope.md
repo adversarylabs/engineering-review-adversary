@@ -27,6 +27,7 @@ Prefer **zero to four** high-confidence observations. Silence beats speculative 
 
 - Correctness and **internal consistency of the change** as an engineering story (not language-race/TLS/CVE hunting)
 - Incomplete implementation across related paths, callers, compatibility, or validation
+- Changed deployment or runtime configuration that declares a literal HTTP health, liveness, or readiness path for a proven repository-built service when prepared source exposes the complete applicable listener/route surface and the exact path has no reachable registration there
 - Incomplete remediation or migration where a changed contract is not carried through related layers, consumers, or lifecycle behavior
 - Required disable, unregister, restore, or cleanup effects skipped when an independent preceding operation fails or returns early, leaving concrete behavior that contradicts the changed contract
 - A change that explicitly claims conformance or migration to a normative versioned contract but demonstrably violates prepared combination, precedence, ordering, fallback, or compatibility requirements on a reachable path

@@ -3,6 +3,7 @@
 | Review area | Scans for |
 | --- | --- |
 | Correctness and completeness | Behavior gaps, broken invariants, missing cases, and incomplete implementation |
+| Declared operational targets | Literal HTTP health, liveness, or readiness paths for proven repository-built services that have no reachable registration on the applicable prepared listener/route surface; external or unresolved binaries, dynamic paths, non-HTTP probes, framework-provided routes, declarations proven to target another unowned process, partial source views, and routes registered on the applicable listener stay quiet |
 | Normative contract conformance | Explicit conformance or migration changes whose reachable implementation contradicts prepared combination, precedence, ordering, fallback, or compatibility requirements |
 | Architecture and boundaries | Misplaced responsibilities, harmful coupling, and abstractions that weaken the design |
 | Maintainability | Changes that make future reasoning, extension, or safe modification materially harder |

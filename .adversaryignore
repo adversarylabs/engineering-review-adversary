@@ -6,6 +6,7 @@ coverage/
 node_modules/
 .depot/
 .adversary-train/
+docs/train-drafts/
 tsconfig.json
 AGENTS.md
 CHECKS.md
