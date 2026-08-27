@@ -9,7 +9,7 @@ import { reviewEngineeringChange } from "./review.js";
 export function createApp(): Adversary {
   const app = new Adversary({
     name: "engineering-review",
-    version: "0.0.31",
+    version: "0.0.32",
     review: {
       maximumFindings: 4,
       minimumConfidence: "medium",

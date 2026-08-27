@@ -323,6 +323,175 @@ test("generalized contract guidance supports one cross-layer finding", async () 
   assert.equal(result.opinion?.ship, false);
 });
 
+test("a cached alternate path that cannot prepare the same action twice is reviewable", async () => {
+  const root = await mkdtemp(join(tmpdir(), "engineering-review-repeated-cache-"));
+  await writeFile(
+    join(root, "ActionManager.cs"),
+    `using System.Collections.Generic;
+
+public sealed class ActionManager {
+    public void PrepareActions(IReadOnlyList<ActionStep> actions) {
+        foreach (var action in actions) {
+            PrepareAction(action);
+        }
+    }
+
+    private void PrepareAction(ActionStep action) {
+        var destination = Path.Combine(_workspace, action.Owner, action.Name, action.Ref);
+        if (_cache.TryResolve(action, out var source)) {
+            Directory.CreateSymbolicLink(destination, source);
+            return;
+        }
+        _download.CopyTo(action, destination);
+    }
+}
+`,
+  );
+  await writeFile(
+    join(root, "ActionManagerL0.cs"),
+    `public sealed class ActionManagerL0 {
+    [Fact]
+    public void RepeatedActionUsesTheSupportedJobShape() {
+        var checkout = ActionStep.Repository("actions/checkout", "v5");
+        _manager.PrepareActions(new[] { checkout, checkout });
+    }
+}
+`,
+  );
+  const model: ReviewModel = repositoryReviewModel(
+    ["ActionManager.cs", "ActionManagerL0.cs"],
+    async <T>(request: ModelReviewRequest) => {
+      assert.match(request.prompt, /Repeated-use alternate paths/);
+      assert.match(request.prompt, /repeated invocation of the same logical operation is reachable/);
+      assert.match(request.prompt, /first alternate-path invocation leaves concrete destination/);
+      assert.match(request.prompt, /later invocation encounters that state/);
+      return {
+        output: {
+          schemaVersion: 1,
+          overall: {
+            verdict: "incomplete-implementation",
+            risk: "medium",
+            ship: false,
+            summary: "The cache fast path cannot prepare a supported repeated action because its first invocation leaves the destination link in place.",
+            primaryConcern: "the non-reentrant cached-action path",
+          },
+          observations: [{
+            id: "cached-action-repeat-conflicts-with-link",
+            title: "Make the cached-action path safe for repeated preparation",
+            category: "correctness",
+            severity: "medium",
+            confidence: "high",
+            principle: "An alternate path must preserve the generic path's supported repeated-use lifecycle semantics.",
+            summary: "PrepareActions accepts the same action twice, but the cache path creates a link at a stable destination without replacing the link left by its first invocation.",
+            impact: "The second supported preparation reaches CreateSymbolicLink with an existing destination and fails instead of preparing the action again.",
+            recommendation: "Reset or atomically replace the destination before linking, and prove the same-action-twice lifecycle through the public preparation boundary.",
+            tradeoffs: "A one-shot implementation is sufficient only if the public job contract rejects duplicate logical actions before this path.",
+            evidence: [{
+              citationId: "repo:read:2",
+              line: 5,
+              detail: "The supported job shape prepares the same logical checkout action twice.",
+            }, {
+              citationId: "repo:read:1",
+              line: 13,
+              detail: "The first cache hit leaves a symbolic link at the stable destination, and the later hit attempts to create the same link without clearing it.",
+            }],
+          }],
+          strengths: [],
+        } as T,
+        provider: "fixture",
+        model: "fixture",
+      };
+    },
+  );
+
+  const result = await createApp().run({
+    input: { source: { path: root } },
+    model,
+  });
+
+  assert.equal(result.findings.length, 1);
+  assert.equal(result.findings[0]?.evidence?.length, 2);
+  assert.equal(result.opinion?.ship, false);
+});
+
+test("proven repeated-use boundaries keep alternate paths quiet", async () => {
+  const cases = [{
+    name: "reset-before-reuse",
+    source: `public void Prepare(ActionStep action) {
+    var destination = DestinationFor(action.CacheKey);
+    if (_cache.TryResolve(action, out var source)) {
+        IOUtil.DeleteDirectory(destination);
+        Directory.CreateSymbolicLink(destination, source);
+        return;
+    }
+    _download.CopyTo(action, destination);
+}
+`,
+    reason: "The cache path clears retained destination state before every link creation.",
+  }, {
+    name: "single-use-contract",
+    source: `public void PrepareActions(IReadOnlyList<ActionStep> actions) {
+    var seen = new HashSet<string>();
+    foreach (var action in actions) {
+        if (!seen.Add(action.CacheKey)) throw new DuplicateActionException(action.CacheKey);
+        PrepareAction(action);
+    }
+}
+`,
+    reason: "The public boundary establishes a single-use invariant for each logical action key.",
+  }, {
+    name: "distinct-targets",
+    source: `public void PrepareActions(IReadOnlyList<ActionStep> actions) {
+    for (var occurrence = 0; occurrence < actions.Count; occurrence++) {
+        var destination = Path.Combine(_workspace, actions[occurrence].CacheKey, occurrence.ToString());
+        PrepareAction(actions[occurrence], destination);
+    }
+}
+`,
+    reason: "Repeated logical actions receive distinct destinations and do not encounter retained state from another occurrence.",
+  }, {
+    name: "shared-atomic-replacement",
+    source: `public void Prepare(ActionStep action) {
+    var source = _cache.TryResolve(action, out var cached)
+        ? cached
+        : _download.Fetch(action);
+    IOUtil.ReplaceDirectoryAtomically(DestinationFor(action.CacheKey), source);
+}
+`,
+    reason: "Cached and generic inputs share one atomic replacement path that is safe when repeated.",
+  }];
+
+  for (const sample of cases) {
+    const root = await mkdtemp(join(tmpdir(), `engineering-review-repeated-${sample.name}-`));
+    await writeFile(join(root, "ActionManager.cs"), sample.source);
+    const model: ReviewModel = repositoryReviewModel(
+      ["ActionManager.cs"],
+      async <T>(request: ModelReviewRequest) => {
+        assert.match(request.prompt, /single use is an established invariant/);
+        assert.match(request.prompt, /resets or atomically replaces its state before reuse/);
+        assert.match(request.prompt, /distinct keys or targets/);
+        assert.match(request.prompt, /demonstrably idempotent or reentrant/);
+        return {
+          output: {
+            ...cleanReview,
+            overall: { ...cleanReview.overall, summary: sample.reason },
+          } as T,
+          provider: "fixture",
+          model: "fixture",
+        };
+      },
+    );
+
+    const result = await createApp().run({
+      input: { source: { path: root } },
+      model,
+    });
+
+    assert.deepEqual(result.findings, [], sample.name);
+    assert.equal(result.opinion?.ship, true, sample.name);
+  }
+});
+
 test("normative combination and ordering mismatches are reviewable", async () => {
   const root = await mkdtemp(join(tmpdir(), "engineering-review-normative-order-"));
   await writeFile(

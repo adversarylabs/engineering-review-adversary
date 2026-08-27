@@ -34,6 +34,7 @@ Prefer **zero to four** high-confidence observations. Silence beats speculative 
 - Maintainability with **material future cost**: wrong boundaries, harmful coupling, duplication that will rot
 - Incorrectly globalized policy where aggregating distinct per-entity constraints changes which items are accepted or rejected
 - Alternate fast, vectorized, cached, or specialized paths that drop validity, presence, or tombstone semantics and therefore process invalid items differently from the generic path
+- Optimized, cached, pooled, or specialized paths that support repeating the same logical operation but leave concrete state after the first invocation that makes a later invocation fail, skip required work, or diverge from the generic path
 - Pagination loops that advance numeric positions by requested capacity despite short non-final pages, skipping records that were never consumed
 - Avoidable materially expensive work before a cheap rejection whose predicate is proven independent of that work, repeated retrieval of the same derived data without an intervening mutation, or materially costly mutation writes that source evidence proves can be combined on the same current target and boundary without losing concurrency, state, side-effect, transaction, failure, or retry semantics
 - Approval or validation of mutable content followed by re-resolving it before a materially trusted or irreversible action, without pinning or checking the artifact's immutable identity
