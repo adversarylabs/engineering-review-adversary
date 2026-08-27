@@ -130,6 +130,6 @@ test("the published runtime executes without node_modules", async () => {
   });
 
   assert.equal(result.adversary.name, "engineering-review");
-  assert.equal(result.adversary.version, "0.0.34");
+  assert.equal(result.adversary.version, "0.0.35");
   assert.deepEqual(result.findings, []);
 });
