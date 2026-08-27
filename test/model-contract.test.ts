@@ -77,6 +77,26 @@ test("prompt preserves value metadata on alternate paths", () => {
   assert.match(ENGINEERING_REVIEW_PROMPT, /evaluates the value together with its metadata/);
 });
 
+test("prompt preserves repeated-use semantics on alternate paths", () => {
+  assert.match(
+    ENGINEERING_REVIEW_PROMPT,
+    /same logical operation more than once in a supported lifecycle/,
+  );
+  assert.match(ENGINEERING_REVIEW_PROMPT, /repeated invocation of the same logical operation is reachable/);
+  assert.match(
+    ENGINEERING_REVIEW_PROMPT,
+    /first alternate-path invocation leaves concrete destination, marker, lease, link, registration, or equivalent state/,
+  );
+  assert.match(ENGINEERING_REVIEW_PROMPT, /later invocation encounters that state/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /fail, skip required work, or otherwise diverge from the generic path/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /Cite the repeated entrypoint, retained state, and conflicting later operation together/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /single use is an established invariant/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /resets or atomically replaces its state before reuse/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /distinct keys or targets/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /demonstrably idempotent or reentrant/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /repeated-use divergence is only assumed/);
+});
+
 test("prompt requires production framing validation before tolerant partial decoding", () => {
   assert.match(
     ENGINEERING_REVIEW_PROMPT,
