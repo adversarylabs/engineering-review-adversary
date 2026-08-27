@@ -33,6 +33,11 @@ test("prompt defines staff-level authority and specialist boundaries", () => {
 });
 
 test("prompt binds declared health paths to a proven local listener surface", () => {
+  assert.match(ENGINEERING_REVIEW_PROMPT, /Required repository traversal for deployment templates/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /Do not stop after reading only the template/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /use prepared Dockerfile\/build evidence to identify the repository-built entrypoint/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /If bounded retrieval cannot prove the local binary ownership and complete applicable route surface, stay silent/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /Template syntax or functions alone are not a defect/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /literal HTTP liveness, readiness, or health path/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /repository-built service/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /deployed binary owns a particular listener and route-registration surface/);
@@ -273,10 +278,55 @@ test("model schema is strict and avoids provider-specific constraint keywords", 
 });
 
 test("model request delegates bounded repository retrieval to the SDK", () => {
-  const request = buildModelReviewRequest(null);
-  const input = request.input as Record<string, unknown>;
+  const request = buildModelReviewRequest(null, [{
+    changedTemplate: "charts/elasti/templates/deployment.yaml",
+    containerCommand: "/resolver",
+    literalHttpPaths: ["/healthz", "/readyz"],
+    missingLiteralHttpPaths: ["/healthz", "/readyz"],
+    templateEvidenceLines: [108, 150, 156],
+    buildFile: "resolver/Dockerfile",
+    buildEvidenceLines: [25, 34],
+    entrypoint: "resolver/cmd/main.go",
+    routeRegistrationLines: [121, 144, 145],
+  }]);
+  const input = request.input as Record<string, unknown> & {
+    investigationGuide?: {
+      declaredOperationalTargets?: string;
+      failClosedBoundary?: string;
+      preparedCandidates?: Array<{
+        changedTemplate?: string;
+        buildFile?: string;
+        entrypoint?: string;
+      }>;
+    };
+  };
 
   assert.equal("sources" in input, false);
+  assert.match(input.investigationGuide?.declaredOperationalTargets ?? "", /container command\/image/);
+  assert.match(input.investigationGuide?.declaredOperationalTargets ?? "", /complete applicable listener\/route-registration surface/);
+  assert.match(input.investigationGuide?.failClosedBoundary ?? "", /stay quiet/);
+  assert.match(input.investigationGuide?.failClosedBoundary ?? "", /generic Helm rendering/);
+  assert.deepEqual(input.investigationGuide?.preparedCandidates, [{
+    changedTemplate: "charts/elasti/templates/deployment.yaml",
+    containerCommand: "/resolver",
+    literalHttpPaths: ["/healthz", "/readyz"],
+    missingLiteralHttpPaths: ["/healthz", "/readyz"],
+    templateEvidenceLines: [108, 150, 156],
+    buildFile: "resolver/Dockerfile",
+    buildEvidenceLines: [25, 34],
+    entrypoint: "resolver/cmd/main.go",
+    routeRegistrationLines: [121, 144, 145],
+  }]);
+  assert.match(request.prompt, /MANDATORY PREPARED OPERATIONAL-TARGET AUDIT/);
+  assert.match(request.prompt, /changed deployment template: charts\/elasti\/templates\/deployment\.yaml/);
+  assert.match(request.prompt, /build ownership evidence: resolver\/Dockerfile/);
+  assert.match(request.prompt, /repository-built entrypoint: resolver\/cmd\/main\.go/);
+  assert.match(request.prompt, /declared literal HTTP paths: \/healthz, \/readyz/);
+  assert.match(request.prompt, /use read_file on every changed template, build file, and entrypoint/);
+  assert.match(request.prompt, /exact template lines containing the literal paths/);
+  assert.match(request.prompt, /exact build or ENTRYPOINT line proving binary ownership/);
+  assert.match(request.prompt, /exact entrypoint lines containing the existing applicable route registrations/);
+  assert.match(request.prompt, /do not weaken the claim to merely "unproven"/i);
   assert.equal(request.budget?.maximumOutputTokens, 12_000);
   assert.equal(request.budget?.timeoutMs, 300_000);
   assert.deepEqual(request.tools?.repository?.include, SOURCE_PATTERNS);

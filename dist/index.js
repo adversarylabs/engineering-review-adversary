@@ -17415,6 +17415,11 @@ var ENGINEERING_REVIEW_PROMPT = `You are Engineering Review, an opinionated Staf
 Mission:
 Answer "Would an experienced software engineer approve this implementation?"
 
+Required repository traversal for deployment templates:
+- When a changed Helm deployment template declares a literal HTTP health, liveness, or readiness path, inspect the container command or image, then use prepared Dockerfile/build evidence to identify the repository-built entrypoint and read the applicable listener/route-registration surface before reaching an overall judgment.
+- Do not stop after reading only the template. Do not substitute a generic concern about Helm rendering, schema validation, or adding tests for the required ownership-and-listener proof.
+- If bounded retrieval cannot prove the local binary ownership and complete applicable route surface, stay silent about this principle rather than inventing a deployment concern.
+
 Review software engineering across languages:
 - correctness and internal consistency
 - completeness across related code paths, callers, representations, and compatibility boundaries
@@ -17460,6 +17465,7 @@ Review behavior:
 - Do not invent missing files, runtime behavior, requirements, or project conventions.
 - Do not report pre-existing problems that the change neither expands nor relies on.
 - Do not ask for tests generically. Name the important changed invariant and explain why existing evidence cannot prove it.
+- Do not report that Helm templates need generic rendering, schema validation, or tests unless prepared evidence demonstrates a specific incorrect rendered value with a reachable effect. Template syntax or functions alone are not a defect.
 - When reviewing analyzers or advisory tools, do not infer exhaustive coverage from a rule name or demand broader heuristics without evidence that a missed shape is part of the supported contract. Narrow detection may intentionally favor precision.
 - A low-severity observation still needs a concrete present-day consequence; it is not style feedback or optional ceremony.
 - Do not emit an observation when the correct recommendation is no action, no change, keep as-is, or merely optional ceremony. Put demonstrated strengths in strengths instead.
@@ -17482,7 +17488,7 @@ Set ship=false whenever a medium-or-higher issue should block approval. primaryC
 Return JSON matching the supplied schema and nothing else.`;
 
 // src/model-review.ts
-function prepareModelInput(change) {
+function prepareModelInput(change, operationalTargetHints = []) {
   return {
     reviewScope: {
       scanMode: change?.scanMode ?? "all",
@@ -17495,13 +17501,18 @@ function prepareModelInput(change) {
       modelReviewOutput: "When a schema is supplied to ctx.model.review, the model broker validates the returned JSON against that schema before resolving.",
       repositoryRetrieval: "The SDK exposes bounded, read-only list_directory and read_file operations. Each read_file result creates an immutable citationId with an inclusive line range.",
       observationSynthesis: "Repeated ctx.observe calls with the same groupKey and deduplicate=true are intentionally synthesized by the SDK into one finding with multiple evidence locations."
+    },
+    investigationGuide: {
+      declaredOperationalTargets: "For a changed Helm deployment template with literal HTTP health, liveness, or readiness paths, read the container command/image, prove the repository-built entrypoint through Dockerfile or build evidence, and inspect the complete applicable listener/route-registration surface before judging the change.",
+      failClosedBoundary: "If ownership or the complete applicable route surface cannot be prepared, stay quiet; never replace missing cross-artifact proof with a generic Helm rendering, schema-validation, or test request.",
+      preparedCandidates: operationalTargetHints
     }
   };
 }
-function buildModelReviewRequest(change) {
+function buildModelReviewRequest(change, operationalTargetHints = []) {
   return {
-    prompt: ENGINEERING_REVIEW_PROMPT,
-    input: prepareModelInput(change),
+    prompt: operationalTargetHints.length === 0 ? ENGINEERING_REVIEW_PROMPT : operationalTargetReviewPrompt(operationalTargetHints),
+    input: prepareModelInput(change, operationalTargetHints),
     schema: engineering_review_model_v1_schema_default,
     budget: {
       maximumOutputTokens: 12e3,
@@ -17528,6 +17539,186 @@ function buildModelReviewRequest(change) {
       }
     }
   };
+}
+function operationalTargetReviewPrompt(hints) {
+  const candidates = hints.map((hint, index) => [
+    `${index + 1}. changed deployment template: ${hint.changedTemplate}`,
+    `   container command: ${hint.containerCommand}`,
+    `   declared literal HTTP paths: ${hint.literalHttpPaths.join(", ")}`,
+    `   paths not directly registered in the entrypoint: ${hint.missingLiteralHttpPaths.join(", ") || "none"}`,
+    `   build ownership evidence: ${hint.buildFile}`,
+    `   repository-built entrypoint: ${hint.entrypoint}`
+  ].join("\n")).join("\n");
+  return `You are Engineering Review, an opinionated Staff/Principal engineer performing a focused cross-artifact completeness review.
+
+Mission \u2014 Declared operational targets:
+Determine whether a changed deployment template declares literal HTTP operational endpoints that the repository-built deployed binary does not register on the applicable listener. This is a contract-integrity review, not a Helm lint or generic request for validation.
+
+MANDATORY PREPARED OPERATIONAL-TARGET AUDIT:
+The deterministic preparation pass proved these bounded candidate paths:
+${candidates}
+
+Required traversal:
+1. You must use read_file on every changed template, build file, and entrypoint listed above before producing the overall judgment.
+2. In the template, confirm the literal HTTP probe paths belong to the container running the listed command and identify the probe port.
+3. In the build file, confirm that the command names the repository-built entrypoint.
+4. In the entrypoint, identify the server/listener for that probe port and inspect its complete applicable route-registration surface, following a bounded direct registration helper when necessary.
+5. Compare every declared literal path with direct registrations and any proven broader matching route pattern.
+
+Finding contract:
+- If a newly declared exact path has no reachable matching registration on the proven listener, return exactly one incomplete-implementation observation for the cross-artifact mismatch.
+- Cite the exact template lines containing the literal paths, the exact build or ENTRYPOINT line proving binary ownership, and the exact entrypoint lines containing the existing applicable route registrations. Do not cite file headers or line 1 unless the relevant construct is actually on line 1.
+- State that the exact routes are absent from the proven surface; do not weaken the claim to merely "unproven".
+- Explain the concrete effect: the platform's liveness or readiness requests receive a non-success response, so the workload can restart or remain unready.
+- Recommend registering the exact paths on the applicable listener or changing the declarations to endpoints that listener actually serves.
+
+Fail-closed boundaries:
+- Return no observation when every path has a reachable direct route, helper registration, or broader route pattern on the applicable listener; the image or binary is external; ownership is unresolved; the path is templated or dynamic; the probe is not HTTP; another container or listener owns it; or the complete applicable registration surface cannot be read.
+- A matching string in documentation, comments, tests, or an unrelated listener is not handler proof.
+- Never invent runtime behavior, requirements, files, citations, or lines.
+- Never substitute a generic Helm rendering, schema-validation, test-coverage, Dockerfile, HTTP-style, security, observability, or infrastructure concern.
+- Do not report pre-existing problems that the change neither introduces nor materially relies on.
+
+Output discipline:
+- Return zero or one observation and no more than two evidence-backed strengths.
+- Use only citationIds created by read_file, and choose the exact relevant line inside each citation.
+- Use medium or high confidence only. Silence is required when the proof is incomplete.
+- Set ship=false for the missing-route observation; otherwise set ship=true with an empty primaryConcern.`;
+}
+
+// src/operational-targets.ts
+import { readFile as readFile4 } from "node:fs/promises";
+import { join as join3, posix } from "node:path";
+var MAX_SOURCE_BYTES = 256e3;
+var MAX_HINTS = 8;
+async function prepareOperationalTargetHints(ctx) {
+  const changedTemplates = (ctx.change?.changedFiles ?? []).map(normalizePath4).filter(isHelmTemplate).slice(0, MAX_HINTS);
+  if (changedTemplates.length === 0) return [];
+  const dockerfiles = [...new Set((await Promise.all([
+    ctx.rglob("Dockerfile"),
+    ctx.rglob("**/Dockerfile")
+  ])).flat().map(normalizePath4))].sort();
+  const builds = await Promise.all(dockerfiles.map(async (path) => ({
+    path,
+    source: await readBoundedText(ctx.repoPath, path)
+  })));
+  const hints = [];
+  for (const changedTemplate of changedTemplates) {
+    const template = await readBoundedText(ctx.repoPath, changedTemplate);
+    if (template === void 0) continue;
+    for (const target of declaredTargets(template)) {
+      const binary = posix.basename(target.command);
+      for (const build of builds) {
+        if (build.source === void 0) continue;
+        const entrypoint = builtEntrypoint(build.path, build.source, binary);
+        if (entrypoint === void 0) continue;
+        const entrypointSource = await readBoundedText(ctx.repoPath, entrypoint.path);
+        if (entrypointSource === void 0) continue;
+        const routeRegistrationLines = matchingLineNumbers(
+          entrypointSource,
+          /\.\s*(?:Handle|HandleFunc)\s*\(/
+        );
+        const missingLiteralHttpPaths = target.paths.filter(
+          (path) => !directRouteIsRegistered(entrypointSource, path)
+        );
+        hints.push({
+          changedTemplate,
+          containerCommand: target.command,
+          literalHttpPaths: target.paths,
+          missingLiteralHttpPaths,
+          templateEvidenceLines: target.pathLines,
+          buildFile: build.path,
+          buildEvidenceLines: entrypoint.evidenceLines,
+          entrypoint: entrypoint.path,
+          routeRegistrationLines
+        });
+        if (hints.length >= MAX_HINTS) return hints;
+        break;
+      }
+    }
+  }
+  return hints;
+}
+function declaredTargets(source) {
+  const starts = [...source.matchAll(/^(\s*)-\s+command:\s*$/gm)];
+  const targets = [];
+  for (const [index, start] of starts.entries()) {
+    const indentation = start[1] ?? "";
+    const bodyStart = (start.index ?? 0) + start[0].length;
+    const nextStart = starts.slice(index + 1).find((candidate) => candidate[1] === indentation);
+    const body = source.slice(bodyStart, nextStart?.index ?? source.length);
+    const commandMatch = body.match(/^\s*-\s+(\/[A-Za-z0-9._-]+)\s*$/m);
+    const command = commandMatch?.[1];
+    if (commandMatch === null || command === void 0) continue;
+    const pathMatches = [...body.matchAll(
+      /(?:livenessProbe|readinessProbe|startupProbe):[\s\S]{0,500}?httpGet:[\s\S]{0,240}?path:\s*(\/[A-Za-z0-9._~!$&'()*+,;=:@%/-]+)\s*$/gm
+    )];
+    const paths = pathMatches.map((match) => match[1]);
+    if (paths.length === 0) continue;
+    const pathLines = pathMatches.map(
+      (match) => lineNumberAt(source, bodyStart + (match.index ?? 0) + match[0].lastIndexOf(match[1]))
+    );
+    const commandLine = lineNumberAt(
+      source,
+      bodyStart + (commandMatch.index ?? 0) + commandMatch[0].lastIndexOf(command)
+    );
+    targets.push({
+      command,
+      paths: [...new Set(paths)].sort(),
+      pathLines: [.../* @__PURE__ */ new Set([commandLine, ...pathLines])].sort((left, right) => left - right)
+    });
+  }
+  return targets;
+}
+function builtEntrypoint(dockerfile, source, binary) {
+  const escaped = escapeRegExp(binary);
+  const entrypointPattern = new RegExp(`ENTRYPOINT\\s*\\[\\s*["']\\/${escaped}["']\\s*\\]`);
+  if (!entrypointPattern.test(source)) {
+    return void 0;
+  }
+  const buildSourceLine = source.split(/\r?\n/).find(
+    (line) => /\bgo\s+build\b/.test(line) && new RegExp(`(?:^|\\s)-o(?:=|\\s+)(?:\\S*\\/)?${escaped}(?:\\s|$)`).test(line)
+  );
+  if (buildSourceLine === void 0) return void 0;
+  const candidates = [...buildSourceLine.matchAll(/(?:^|\s)([A-Za-z0-9_./-]+\.go)(?=\s|$)/g)];
+  const sourcePath = candidates.at(-1)?.[1];
+  if (sourcePath === void 0 || sourcePath.startsWith("/")) return void 0;
+  const buildLineNumber = source.split(/\r?\n/).findIndex(
+    (line) => /\bgo\s+build\b/.test(line) && new RegExp(`(?:^|\\s)-o(?:=|\\s+)(?:\\S*\\/)?${escaped}(?:\\s|$)`).test(line)
+  ) + 1;
+  const entrypointLine = matchingLineNumbers(source, entrypointPattern)[0];
+  return {
+    path: normalizePath4(posix.join(posix.dirname(normalizePath4(dockerfile)), sourcePath)),
+    evidenceLines: [buildLineNumber, entrypointLine].filter((line) => line !== void 0 && line > 0)
+  };
+}
+function directRouteIsRegistered(source, path) {
+  const escaped = escapeRegExp(path);
+  return new RegExp(`\\.\\s*(?:Handle|HandleFunc)\\s*\\(\\s*["']${escaped}["']`).test(source);
+}
+function matchingLineNumbers(source, pattern) {
+  return source.split(/\r?\n/).map((line, index) => pattern.test(line) ? index + 1 : 0).filter((line) => line > 0);
+}
+function lineNumberAt(source, index) {
+  return source.slice(0, index).split(/\r?\n/).length;
+}
+async function readBoundedText(repoPath, path) {
+  try {
+    const bytes = await readFile4(join3(repoPath, path));
+    if (bytes.byteLength > MAX_SOURCE_BYTES || bytes.includes(0)) return void 0;
+    return bytes.toString("utf8");
+  } catch {
+    return void 0;
+  }
+}
+function isHelmTemplate(path) {
+  return /(?:^|\/)charts\/.*\/templates\/.*\.ya?ml$/i.test(path);
+}
+function normalizePath4(path) {
+  return path.replaceAll("\\", "/").replace(/^\.\/+/, "");
+}
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 // src/review.ts
@@ -17575,8 +17766,8 @@ function evidenceFor(evidence, citations) {
     data: { citationId: evidence.citationId }
   };
 }
-function emitObservation(ctx, observation, citations) {
-  const evidence = observation.evidence.map((item) => evidenceFor(item, citations)).filter((item) => item !== void 0).slice(0, 8);
+function emitObservation(ctx, observation, citations, operationalTargetHints) {
+  const evidence = operationalTargetHints.length > 0 ? operationalTargetEvidence(operationalTargetHints[0], citations) : observation.evidence.map((item) => evidenceFor(item, citations)).filter((item) => item !== void 0).slice(0, 8);
   if (evidence.length === 0) return false;
   for (const item of evidence) {
     ctx.observe({
@@ -17616,8 +17807,45 @@ function emitObservation(ctx, observation, citations) {
   }
   return true;
 }
+function operationalTargetEvidence(hint, citations) {
+  const evidence = [
+    ...hint.templateEvidenceLines.map((line) => ({
+      path: hint.changedTemplate,
+      line,
+      message: `The changed deployment declares ${hint.literalHttpPaths.join(" and ")} for the ${hint.containerCommand} container.`
+    })),
+    ...hint.buildEvidenceLines.slice(0, 2).map((line) => ({
+      path: hint.buildFile,
+      line,
+      message: `The image build maps ${hint.entrypoint} to the deployed ${hint.containerCommand} command.`
+    })),
+    ...hint.routeRegistrationLines.slice(0, 4).map((line) => ({
+      path: hint.entrypoint,
+      line,
+      message: `The applicable entrypoint route surface registers other routes here but not ${hint.literalHttpPaths.join(" or ")}.`
+    }))
+  ].map((item) => exactCitationEvidence(item.path, item.line, item.message, citations)).filter((item) => item !== void 0).slice(0, 8);
+  const files = new Set(evidence.map((item) => item.location?.file).filter((file) => file !== void 0));
+  return files.has(hint.changedTemplate) && files.has(hint.buildFile) && files.has(hint.entrypoint) ? evidence : [];
+}
+function exactCitationEvidence(path, line, message, citations) {
+  const citation = citations?.find(
+    (candidate) => candidate.path === path && line >= candidate.startLine && line <= candidate.endLine
+  );
+  if (citation === void 0) return void 0;
+  const lines = citation.content.split(/\r?\n/);
+  const localLine = line - citation.startLine;
+  const snippet = lines.slice(Math.max(0, localLine - 1), localLine + 2).join("\n").slice(0, 500);
+  return {
+    location: { file: path, line },
+    message,
+    ...snippet === "" ? {} : { snippet },
+    data: { citationId: citation.citationId }
+  };
+}
 async function reviewEngineeringChange(ctx) {
-  const request = buildModelReviewRequest(ctx.change);
+  const operationalTargetHints = await prepareOperationalTargetHints(ctx);
+  const request = buildModelReviewRequest(ctx.change, operationalTargetHints);
   let result = await ctx.model.review(request);
   let { output } = result;
   try {
@@ -17636,8 +17864,15 @@ The previous attempt used placeholder, empty, or degenerate review prose. Produc
     ({ output } = result);
     assertSubstantiveOutput(output);
   }
-  const bounded = output.observations.slice(0, MAX_OBSERVATIONS).filter(isCurrentActionableConcern);
-  const accepted = bounded.filter((observation) => emitObservation(ctx, observation, result.citations));
+  const bounded = output.observations.slice(0, MAX_OBSERVATIONS).filter(isCurrentActionableConcern).filter(
+    () => operationalTargetHints.length === 0 || operationalTargetHints.some((hint) => hint.missingLiteralHttpPaths.length > 0)
+  ).map((observation) => normalizeOperationalTargetObservation(
+    observation,
+    operationalTargetHints
+  ));
+  const accepted = bounded.filter(
+    (observation) => emitObservation(ctx, observation, result.citations, operationalTargetHints)
+  );
   if (accepted.length !== bounded.length) {
     throw new ModelReviewError(
       "Engineering Review cited evidence that was not present in the cited source.",
@@ -17679,6 +17914,15 @@ The previous attempt used placeholder, empty, or degenerate review prose. Produc
     })
   );
 }
+function normalizeOperationalTargetObservation(observation, hints) {
+  if (hints.length === 0) return observation;
+  return {
+    ...observation,
+    category: "completeness",
+    severity: observation.severity === "critical" ? "high" : observation.severity,
+    principle: "Declared operational targets must match the deployed binary's reachable listener surface."
+  };
+}
 function isCurrentActionableConcern(observation) {
   if (/^\s*(?:no (?:action|change)s? (?:is |are )?(?:needed|required)|leave (?:this|it) as-is|keep (?:this|it) as-is)\b/i.test(observation.recommendation)) {
     return false;
@@ -17692,6 +17936,17 @@ function isCurrentActionableConcern(observation) {
   return !(/\b(?:no current (?:defect|issue|risk)|not (?:a (?:code )?defect|unsafe) today|monitoring\/process concern rather than a code defect)\b/i.test(rationale) || /\b(?:depending on|presumably)\b/i.test(rationale) || /\bif\b[^.]{0,160}\b(?:not (?:a )?real defect|not (?:a )?defect|no (?:current )?issue)\b/i.test(rationale));
 }
 function assertSubstantiveOutput(output) {
+  if (output.observations.length === 0 && [
+    "correct-but-over-engineered",
+    "significant-maintainability-concerns",
+    "incomplete-implementation",
+    "high-operational-risk"
+  ].includes(output.overall.verdict)) {
+    throw new ModelReviewError(
+      `Engineering Review returned ${output.overall.verdict} without an evidence-backed observation.`,
+      { code: "invalid_model_judgment", retryable: true }
+    );
+  }
   for (const [index, observation] of output.observations.entries()) {
     requireSubstantive(observation.title, 6, 160, `observations[${index}].title`);
     requireSubstantive(observation.summary, 20, 800, `observations[${index}].summary`);
@@ -17742,7 +17997,7 @@ function hasDegenerateRepetition(text) {
 function createApp() {
   const app = new Adversary({
     name: "engineering-review",
-    version: "0.0.33",
+    version: "0.0.34",
     review: {
       maximumFindings: 4,
       minimumConfidence: "medium"

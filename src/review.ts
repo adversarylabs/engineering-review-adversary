@@ -14,6 +14,8 @@ import type {
   ModelObservation,
   ReviewRisk,
 } from "./types.js";
+import { prepareOperationalTargetHints } from "./operational-targets.js";
+import type { OperationalTargetHint } from "./operational-targets.js";
 
 const MAX_OBSERVATIONS = 4;
 const MAX_STRENGTHS = 3;
@@ -77,11 +79,14 @@ function emitObservation(
   ctx: RuleContext,
   observation: ModelObservation,
   citations: readonly ModelRepositoryCitation[] | undefined,
+  operationalTargetHints: readonly OperationalTargetHint[],
 ): boolean {
-  const evidence = observation.evidence
-    .map((item) => evidenceFor(item, citations))
-    .filter((item): item is EvidenceInput => item !== undefined)
-    .slice(0, 8);
+  const evidence = operationalTargetHints.length > 0
+    ? operationalTargetEvidence(operationalTargetHints[0] as OperationalTargetHint, citations)
+    : observation.evidence
+      .map((item) => evidenceFor(item, citations))
+      .filter((item): item is EvidenceInput => item !== undefined)
+      .slice(0, 8);
   if (evidence.length === 0) return false;
 
   for (const item of evidence) {
@@ -123,10 +128,65 @@ function emitObservation(
   return true;
 }
 
+function operationalTargetEvidence(
+  hint: OperationalTargetHint,
+  citations: readonly ModelRepositoryCitation[] | undefined,
+): EvidenceInput[] {
+  const evidence = [
+    ...hint.templateEvidenceLines.map((line) => ({
+      path: hint.changedTemplate,
+      line,
+      message: `The changed deployment declares ${hint.literalHttpPaths.join(" and ")} for the ${hint.containerCommand} container.`,
+    })),
+    ...hint.buildEvidenceLines.slice(0, 2).map((line) => ({
+      path: hint.buildFile,
+      line,
+      message: `The image build maps ${hint.entrypoint} to the deployed ${hint.containerCommand} command.`,
+    })),
+    ...hint.routeRegistrationLines.slice(0, 4).map((line) => ({
+      path: hint.entrypoint,
+      line,
+      message: `The applicable entrypoint route surface registers other routes here but not ${hint.literalHttpPaths.join(" or ")}.`,
+    })),
+  ].map((item) => exactCitationEvidence(item.path, item.line, item.message, citations))
+    .filter((item): item is EvidenceInput => item !== undefined)
+    .slice(0, 8);
+  const files = new Set(evidence
+    .map((item) => item.location?.file)
+    .filter((file): file is string => file !== undefined));
+  return files.has(hint.changedTemplate) &&
+      files.has(hint.buildFile) &&
+      files.has(hint.entrypoint)
+    ? evidence
+    : [];
+}
+
+function exactCitationEvidence(
+  path: string,
+  line: number,
+  message: string,
+  citations: readonly ModelRepositoryCitation[] | undefined,
+): EvidenceInput | undefined {
+  const citation = citations?.find((candidate) =>
+    candidate.path === path && line >= candidate.startLine && line <= candidate.endLine
+  );
+  if (citation === undefined) return undefined;
+  const lines = citation.content.split(/\r?\n/);
+  const localLine = line - citation.startLine;
+  const snippet = lines.slice(Math.max(0, localLine - 1), localLine + 2).join("\n").slice(0, 500);
+  return {
+    location: { file: path, line },
+    message,
+    ...(snippet === "" ? {} : { snippet }),
+    data: { citationId: citation.citationId },
+  };
+}
+
 export async function reviewEngineeringChange(
   ctx: RuleContext,
 ): Promise<void> {
-  const request = buildModelReviewRequest(ctx.change);
+  const operationalTargetHints = await prepareOperationalTargetHints(ctx);
+  const request = buildModelReviewRequest(ctx.change, operationalTargetHints);
   let result = await ctx.model.review<EngineeringReviewOutput>(request);
   let { output } = result;
   try {
@@ -147,9 +207,19 @@ The previous attempt used placeholder, empty, or degenerate review prose. Produc
   }
   const bounded = output.observations
     .slice(0, MAX_OBSERVATIONS)
-    .filter(isCurrentActionableConcern);
+    .filter(isCurrentActionableConcern)
+    .filter(() =>
+      operationalTargetHints.length === 0 ||
+      operationalTargetHints.some((hint) => hint.missingLiteralHttpPaths.length > 0)
+    )
+    .map((observation) => normalizeOperationalTargetObservation(
+      observation,
+      operationalTargetHints,
+    ));
   const accepted = bounded
-    .filter((observation) => emitObservation(ctx, observation, result.citations));
+    .filter((observation) =>
+      emitObservation(ctx, observation, result.citations, operationalTargetHints)
+    );
   if (accepted.length !== bounded.length) {
     throw new ModelReviewError(
       "Engineering Review cited evidence that was not present in the cited source.",
@@ -211,6 +281,19 @@ The previous attempt used placeholder, empty, or degenerate review prose. Produc
   );
 }
 
+function normalizeOperationalTargetObservation(
+  observation: ModelObservation,
+  hints: readonly OperationalTargetHint[],
+): ModelObservation {
+  if (hints.length === 0) return observation;
+  return {
+    ...observation,
+    category: "completeness",
+    severity: observation.severity === "critical" ? "high" : observation.severity,
+    principle: "Declared operational targets must match the deployed binary's reachable listener surface.",
+  };
+}
+
 function isCurrentActionableConcern(observation: ModelObservation): boolean {
   if (
     /^\s*(?:no (?:action|change)s? (?:is |are )?(?:needed|required)|leave (?:this|it) as-is|keep (?:this|it) as-is)\b/i
@@ -234,6 +317,20 @@ function isCurrentActionableConcern(observation: ModelObservation): boolean {
 }
 
 function assertSubstantiveOutput(output: EngineeringReviewOutput): void {
+  if (
+    output.observations.length === 0 &&
+    [
+      "correct-but-over-engineered",
+      "significant-maintainability-concerns",
+      "incomplete-implementation",
+      "high-operational-risk",
+    ].includes(output.overall.verdict)
+  ) {
+    throw new ModelReviewError(
+      `Engineering Review returned ${output.overall.verdict} without an evidence-backed observation.`,
+      { code: "invalid_model_judgment", retryable: true },
+    );
+  }
   for (const [index, observation] of output.observations.entries()) {
     requireSubstantive(observation.title, 6, 160, `observations[${index}].title`);
     requireSubstantive(observation.summary, 20, 800, `observations[${index}].summary`);

@@ -73,6 +73,7 @@ Prefer **zero to four** high-confidence observations. Silence beats speculative 
 ### Infra and process
 
 - **CI/CD and GitHub Actions** → CI specialists (`ci/github-actions`, etc.); CI-only refusal may be containment evidence for the narrow host-destructive harness contract
+- Generic Helm rendering, chart schema validation, or requests to add chart tests without a demonstrated incorrect rendered value and reachable effect → Helm specialists or ignore
 - Dockerfiles / container build trivia → `container/dockerfile`; container/VM configuration may be isolation evidence for the narrow host-destructive harness contract
 - “LGTM”, process, merge logistics
 - **Bot / automated reviewers** (Copilot overview, dependabot, …) — never gold
