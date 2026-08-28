@@ -17997,7 +17997,7 @@ function hasDegenerateRepetition(text) {
 function createApp() {
   const app = new Adversary({
     name: "engineering-review",
-    version: "0.0.35",
+    version: "0.0.36",
     review: {
       maximumFindings: 4,
       minimumConfidence: "medium"
