@@ -3647,12 +3647,7 @@ var require_fast_uri = __commonJS({
     }
     function resolve3(baseURI, relativeURI, options) {
       const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
-      const { parsed: baseParsed, malformedAuthorityOrPort: baseMalformed } = parseWithStatus(baseURI, schemelessOptions);
-      const { parsed: relativeParsed, malformedAuthorityOrPort: relativeMalformed } = parseWithStatus(relativeURI, schemelessOptions);
-      if (baseMalformed || relativeMalformed) {
-        throw new Error(baseParsed.error || relativeParsed.error || "URI is malformed.");
-      }
-      const resolved = resolveComponent(baseParsed, relativeParsed, schemelessOptions, true);
+      const resolved = resolveComponent(parse(baseURI, schemelessOptions), parse(relativeURI, schemelessOptions), schemelessOptions, true);
       schemelessOptions.skipEscape = true;
       return serialize(resolved, schemelessOptions);
     }
@@ -3778,7 +3773,6 @@ var require_fast_uri = __commonJS({
     }
     var URI_PARSE = /^(?:([^#/:?]+):)?(?:\/\/((?:([^#/?@]*)@)?(\[[^#/?\]]+\]|[^#/:?]*)(?::(\d*))?))?([^#?]*)(?:\?([^#]*))?(?:#((?:.|[\n\r])*))?/u;
     var AUTHORITY_PREFIX = /^(?:[^#/:?]+:)?\/\/([^/?#]*)/;
-    var AUTHORITY_INTRODUCER_REGION = /^(?:[^#/:?]+:)?([/\\\t\n\r]*)/;
     function getParseError(parsed, matches) {
       if (matches[2] !== void 0 && parsed.path && parsed.path[0] !== "/") {
         return 'URI path must start with "/" when authority is present.';
@@ -3812,20 +3806,6 @@ var require_fast_uri = __commonJS({
       if (authorityMatch !== null && authorityMatch[1].indexOf("\\") !== -1) {
         parsed.error = "URI authority must not contain a literal backslash.";
         malformedAuthorityOrPort = true;
-      }
-      const introducerMatch = uri.match(AUTHORITY_INTRODUCER_REGION);
-      if (introducerMatch !== null) {
-        const region = introducerMatch[1];
-        const normalizedRegion = region.replace(/[\t\n\r]/g, "");
-        if (normalizedRegion.length >= 2) {
-          if (normalizedRegion.slice(0, 2) !== "//") {
-            parsed.error = parsed.error || "URI authority must not contain a literal backslash.";
-            malformedAuthorityOrPort = true;
-          } else if (region.length !== normalizedRegion.length) {
-            parsed.error = parsed.error || "URI authority introducer must not contain whitespace.";
-            malformedAuthorityOrPort = true;
-          }
-        }
       }
       const matches = uri.match(URI_PARSE);
       if (matches) {
@@ -4344,7 +4324,7 @@ var require_core = __commonJS({
       errorsText(errors = this.errors, { separator = ", ", dataVar = "data" } = {}) {
         if (!errors || errors.length === 0)
           return "No errors";
-        return errors.map((e) => `${dataVar}${e.instancePath} ${e.message}`).reduce((text, msg) => text + separator + msg);
+        return errors.map((e) => `${dataVar}${e.instancePath} ${e.message}`).reduce((text2, msg) => text2 + separator + msg);
       }
       $dataMetaSchema(metaSchema, keywordsJsonPointers) {
         const rules = this.RULES.all;
@@ -8141,14 +8121,14 @@ var require_foldFlowLines = __commonJS({
     var FOLD_FLOW = "flow";
     var FOLD_BLOCK = "block";
     var FOLD_QUOTED = "quoted";
-    function foldFlowLines(text, indent, mode = "flow", { indentAtStart, lineWidth = 80, minContentWidth = 20, onFold, onOverflow } = {}) {
+    function foldFlowLines(text2, indent, mode = "flow", { indentAtStart, lineWidth = 80, minContentWidth = 20, onFold, onOverflow } = {}) {
       if (!lineWidth || lineWidth < 0)
-        return text;
+        return text2;
       if (lineWidth < minContentWidth)
         minContentWidth = 0;
       const endStep = Math.max(1 + minContentWidth, 1 + lineWidth - indent.length);
-      if (text.length <= endStep)
-        return text;
+      if (text2.length <= endStep)
+        return text2;
       const folds = [];
       const escapedFolds = {};
       let end = lineWidth - indent.length;
@@ -8165,14 +8145,14 @@ var require_foldFlowLines = __commonJS({
       let escStart = -1;
       let escEnd = -1;
       if (mode === FOLD_BLOCK) {
-        i = consumeMoreIndentedLines(text, i, indent.length);
+        i = consumeMoreIndentedLines(text2, i, indent.length);
         if (i !== -1)
           end = i + endStep;
       }
-      for (let ch; ch = text[i += 1]; ) {
+      for (let ch; ch = text2[i += 1]; ) {
         if (mode === FOLD_QUOTED && ch === "\\") {
           escStart = i;
-          switch (text[i + 1]) {
+          switch (text2[i + 1]) {
             case "x":
               i += 3;
               break;
@@ -8189,12 +8169,12 @@ var require_foldFlowLines = __commonJS({
         }
         if (ch === "\n") {
           if (mode === FOLD_BLOCK)
-            i = consumeMoreIndentedLines(text, i, indent.length);
+            i = consumeMoreIndentedLines(text2, i, indent.length);
           end = i + indent.length + endStep;
           split = void 0;
         } else {
           if (ch === " " && prev && prev !== " " && prev !== "\n" && prev !== "	") {
-            const next = text[i + 1];
+            const next = text2[i + 1];
             if (next && next !== " " && next !== "\n" && next !== "	")
               split = i;
           }
@@ -8206,12 +8186,12 @@ var require_foldFlowLines = __commonJS({
             } else if (mode === FOLD_QUOTED) {
               while (prev === " " || prev === "	") {
                 prev = ch;
-                ch = text[i += 1];
+                ch = text2[i += 1];
                 overflow = true;
               }
               const j = i > escEnd + 1 ? i - 2 : escStart - 1;
               if (escapedFolds[j])
-                return text;
+                return text2;
               folds.push(j);
               escapedFolds[j] = true;
               end = j + endStep;
@@ -8226,39 +8206,39 @@ var require_foldFlowLines = __commonJS({
       if (overflow && onOverflow)
         onOverflow();
       if (folds.length === 0)
-        return text;
+        return text2;
       if (onFold)
         onFold();
-      let res = text.slice(0, folds[0]);
+      let res = text2.slice(0, folds[0]);
       for (let i2 = 0; i2 < folds.length; ++i2) {
         const fold = folds[i2];
-        const end2 = folds[i2 + 1] || text.length;
+        const end2 = folds[i2 + 1] || text2.length;
         if (fold === 0)
           res = `
-${indent}${text.slice(0, end2)}`;
+${indent}${text2.slice(0, end2)}`;
         else {
           if (mode === FOLD_QUOTED && escapedFolds[fold])
-            res += `${text[fold]}\\`;
+            res += `${text2[fold]}\\`;
           res += `
-${indent}${text.slice(fold + 1, end2)}`;
+${indent}${text2.slice(fold + 1, end2)}`;
         }
       }
       return res;
     }
-    function consumeMoreIndentedLines(text, i, indent) {
+    function consumeMoreIndentedLines(text2, i, indent) {
       let end = i;
       let start = i + 1;
-      let ch = text[start];
+      let ch = text2[start];
       while (ch === " " || ch === "	") {
         if (i < start + indent) {
-          ch = text[++i];
+          ch = text2[++i];
         } else {
           do {
-            ch = text[++i];
+            ch = text2[++i];
           } while (ch && ch !== "\n");
           end = i;
           start = i + 1;
-          ch = text[start];
+          ch = text2[start];
         }
       }
       return end;
@@ -14509,7 +14489,7 @@ import { fileURLToPath } from "node:url";
 
 // node_modules/@adversarylabs/sdk/dist/index.js
 var import__2 = __toESM(require__(), 1);
-import { mkdir, readFile as readFile3, readdir as readdir3, writeFile } from "node:fs/promises";
+import { mkdir, readFile as readFile4, readdir as readdir3, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute as isAbsolute2, relative as relative2, resolve as resolve2 } from "node:path";
 
 // node_modules/@adversarylabs/sdk/dist/model.js
@@ -14804,9 +14784,255 @@ function validateModelOutput(schema, output) {
   }
 }
 
-// node_modules/@adversarylabs/sdk/dist/repo-index.js
-import { open, readFile } from "node:fs/promises";
+// node_modules/@adversarylabs/sdk/dist/repo-graph.js
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
+var ADVERSARY_REPO_GRAPH_ENV = "ADVERSARY_REPO_GRAPH";
+var REPO_GRAPH_SCHEMA_VERSION = "v2";
+var REPO_GRAPH_ADAPTER_REVISION = "go-ast-v1+ts-syntax-v1";
+var RepoGraphUnavailableError = class extends Error {
+  code = "repo_graph_unavailable";
+  constructor(message) {
+    super(message);
+    this.name = "RepoGraphUnavailableError";
+  }
+};
+async function openRepoGraph(dir) {
+  const raw = await readFile(join(dir, "meta.json"), "utf8");
+  const meta = JSON.parse(raw);
+  if (meta.schemaVersion !== REPO_GRAPH_SCHEMA_VERSION || meta.adapterRevision !== REPO_GRAPH_ADAPTER_REVISION) {
+    throw new RepoGraphUnavailableError(`unsupported repo-graph schema ${meta.schemaVersion}/${meta.adapterRevision}`);
+  }
+  const database = new DatabaseSync(join(dir, "graph.sqlite"), { readOnly: true });
+  return new SQLiteRepoGraph(dir, meta, database);
+}
+async function repoGraphFromEnvironment(env = process.env) {
+  const dir = env[ADVERSARY_REPO_GRAPH_ENV]?.trim();
+  if (!dir)
+    return null;
+  try {
+    return await openRepoGraph(dir);
+  } catch {
+    return null;
+  }
+}
+var SQLiteRepoGraph = class {
+  dir;
+  meta;
+  database;
+  constructor(dir, meta, database) {
+    this.dir = dir;
+    this.meta = meta;
+    this.database = database;
+  }
+  files(query = {}) {
+    const { limit, cursor } = bounds(query.limit, query.cursor);
+    const glob = query.glob === void 0 ? "" : globToLike(query.glob);
+    const rows = this.database.prepare(`SELECT id,path,language,size,hash,module FROM files
+      WHERE id > ? AND (? = '' OR language = ?) AND (? = '' OR path LIKE ? ESCAPE '\\')
+      ORDER BY id LIMIT ?`).all(cursor, query.language ?? "", query.language ?? "", glob, glob, limit + 1);
+    return page(rows.map(fileRow), limit, (item) => item.id);
+  }
+  symbolAt(path, line, column = 0) {
+    validPath(path);
+    if (!Number.isInteger(line) || line < 1 || !Number.isInteger(column) || column < 0) {
+      throw new Error("line must be positive and column non-negative");
+    }
+    const row = this.database.prepare(`${symbolSelect}
+      WHERE f.path=? AND (s.start_line < ? OR (s.start_line=? AND s.start_col<=?))
+      AND (s.end_line > ? OR (s.end_line=? AND s.end_col>=?))
+      ORDER BY (s.end_line-s.start_line) ASC, s.id ASC LIMIT 1`).get(normalizePath(path), line, line, column, line, line, column);
+    return row === void 0 ? void 0 : symbolRow(row);
+  }
+  symbols(query = {}) {
+    if (query.path !== void 0)
+      validPath(query.path);
+    const { limit, cursor } = bounds(query.limit, query.cursor);
+    const rows = this.database.prepare(`${symbolSelect}
+      WHERE s.id>? AND (?='' OR f.path=?) AND (?='' OR s.name=?) AND (?='' OR s.kind=?)
+      ORDER BY s.id LIMIT ?`).all(cursor, query.path ?? "", normalizePath(query.path ?? ""), query.name ?? "", query.name ?? "", query.kind ?? "", query.kind ?? "", limit + 1);
+    return page(rows.map(symbolRow), limit, (item) => item.id);
+  }
+  definitions(query) {
+    return this.symbols(query);
+  }
+  references(query) {
+    return this.relations(query, "references", false);
+  }
+  callers(query) {
+    return this.relations(query, "calls", false);
+  }
+  callees(query) {
+    return this.relations(query, "calls", true);
+  }
+  implementations(query) {
+    return this.relations(query, "implements", false);
+  }
+  importsOf(path, cursor, limit) {
+    return this.fileRelations(path, cursor, limit, true);
+  }
+  importersOf(path, cursor, limit) {
+    return this.fileRelations(path, cursor, limit, false);
+  }
+  relatedTests(options) {
+    if (options.path !== void 0)
+      validPath(options.path);
+    const symbolId = options.symbolId ?? 0;
+    if (!Number.isInteger(symbolId) || symbolId < 0)
+      throw new Error("symbolId must be non-negative");
+    const { limit, cursor } = bounds(options.limit, options.cursor);
+    const rows = this.database.prepare(`SELECT tl.id,sf.path AS source_path,
+      tl.source_symbol_id,tf.path AS test_path,tl.test_symbol_id,tl.confidence,tl.reason
+      FROM test_links tl JOIN files sf ON sf.id=tl.source_file_id
+      JOIN files tf ON tf.id=tl.test_file_id
+      WHERE tl.id>? AND (?='' OR sf.path=?)
+      AND (?=0 OR tl.source_symbol_id=? OR sf.id=(SELECT file_id FROM symbols WHERE id=?))
+      ORDER BY tl.id LIMIT ?`).all(cursor, options.path ?? "", normalizePath(options.path ?? ""), symbolId, symbolId, symbolId, limit + 1);
+    return testLinkPage(rows.map(testLinkRow), limit);
+  }
+  close() {
+    this.database.close();
+  }
+  relations(query, kind, outgoing) {
+    if (!Number.isInteger(query.symbolId) || query.symbolId < 1) {
+      throw new Error("symbolId must be positive");
+    }
+    const { limit, cursor } = bounds(query.limit, query.cursor);
+    const column = outgoing ? "from_symbol_id" : "to_symbol_id";
+    const rows = this.database.prepare(`${edgeSelect}
+      WHERE e.id>? AND e.kind=? AND e.${column}=? ORDER BY e.id LIMIT ?`).all(cursor, kind, query.symbolId, limit + 1);
+    return page(rows.map(edgeRow), limit, (item) => item.id);
+  }
+  fileRelations(path, cursorValue, limitValue, outgoing) {
+    validPath(path);
+    const { limit, cursor } = bounds(limitValue, cursorValue);
+    const condition = outgoing ? "ff.path=?" : "tf.module=(SELECT module FROM files WHERE path=?)";
+    const rows = this.database.prepare(`${edgeSelect}
+      WHERE e.id>? AND e.kind='imports' AND ${condition} ORDER BY e.id LIMIT ?`).all(cursor, normalizePath(path), limit + 1);
+    return page(rows.map(edgeRow), limit, (item) => item.id);
+  }
+};
+var symbolSelect = `SELECT s.id,s.name,s.kind,f.path,s.start_line,s.start_col,
+  s.end_line,s.end_col,s.container_id,s.exported,f.language,s.adapter_data
+  FROM symbols s JOIN files f ON f.id=s.file_id`;
+var edgeSelect = `SELECT e.id,ff.path AS from_path,e.from_symbol_id,
+  COALESCE(tf.path,'') AS to_path,e.to_symbol_id,
+  COALESCE(e.unresolved_target,'') AS unresolved_target,e.kind,e.line,e.column,
+  e.confidence,e.adapter FROM edges e JOIN files ff ON ff.id=e.from_file_id
+  LEFT JOIN files tf ON tf.id=e.to_file_id`;
+function fileRow(row) {
+  return {
+    id: number(row.id),
+    path: text(row.path),
+    language: text(row.language),
+    size: number(row.size),
+    hash: text(row.hash),
+    ...text(row.module) === "" ? {} : { module: text(row.module) }
+  };
+}
+function symbolRow(row) {
+  return {
+    id: number(row.id),
+    name: text(row.name),
+    kind: text(row.kind),
+    path: text(row.path),
+    startLine: number(row.start_line),
+    startColumn: number(row.start_col),
+    endLine: number(row.end_line),
+    endColumn: number(row.end_col),
+    ...row.container_id === null ? {} : { containerId: number(row.container_id) },
+    exported: number(row.exported) !== 0,
+    language: text(row.language),
+    ...text(row.adapter_data) === "" ? {} : { metadata: text(row.adapter_data) }
+  };
+}
+function edgeRow(row) {
+  return {
+    id: number(row.id),
+    fromPath: text(row.from_path),
+    ...row.from_symbol_id === null ? {} : { fromSymbolId: number(row.from_symbol_id) },
+    ...text(row.to_path) === "" ? {} : { toPath: text(row.to_path) },
+    ...row.to_symbol_id === null ? {} : { toSymbolId: number(row.to_symbol_id) },
+    ...text(row.unresolved_target) === "" ? {} : { unresolvedTarget: text(row.unresolved_target) },
+    kind: text(row.kind),
+    line: number(row.line),
+    column: number(row.column),
+    confidence: number(row.confidence),
+    adapter: text(row.adapter)
+  };
+}
+function testLinkRow(row) {
+  return {
+    id: number(row.id),
+    sourcePath: text(row.source_path),
+    ...row.source_symbol_id === null ? {} : { sourceSymbolId: number(row.source_symbol_id) },
+    testPath: text(row.test_path),
+    ...row.test_symbol_id === null ? {} : { testSymbolId: number(row.test_symbol_id) },
+    confidence: number(row.confidence),
+    reason: text(row.reason)
+  };
+}
+function page(items, limit, id) {
+  const hasMore = items.length > limit;
+  const bounded = hasMore ? items.slice(0, limit) : items;
+  const nextCursor = hasMore ? String(id(bounded[bounded.length - 1])) : void 0;
+  return {
+    items: bounded,
+    ...nextCursor === void 0 ? {} : { nextCursor }
+  };
+}
+function testLinkPage(items, limit) {
+  const bounded = page(items, limit, (item) => item.id);
+  return {
+    items: bounded.items.map(({ id: _id, ...item }) => item),
+    ...bounded.nextCursor === void 0 ? {} : { nextCursor: bounded.nextCursor }
+  };
+}
+function bounds(limitValue, cursorValue) {
+  const limit = limitValue ?? 100;
+  if (!Number.isInteger(limit) || limit < 1 || limit > 500) {
+    throw new Error("limit must be an integer from 1 through 500");
+  }
+  const cursor = cursorValue === void 0 || cursorValue === "" ? 0 : Number(cursorValue);
+  if (!Number.isSafeInteger(cursor) || cursor < 0) {
+    throw new Error("cursor must be a non-negative integer");
+  }
+  return { limit, cursor };
+}
+function validPath(path) {
+  const normalized = normalizePath(path);
+  if (normalized === "" || normalized.startsWith("/") || normalized === ".." || normalized.startsWith("../") || normalized.includes("/../") || normalized.includes("\0") || normalized.includes("//")) {
+    throw new Error("path must be normalized and repository-relative");
+  }
+}
+function normalizePath(path) {
+  return path.replaceAll("\\", "/").replace(/^\.\//, "");
+}
+function globToLike(glob) {
+  if (glob.includes("..") || glob.startsWith("/") || glob.includes("\0")) {
+    throw new Error("glob must be repository-relative");
+  }
+  return normalizePath(glob).replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_").replaceAll("*", "%").replaceAll("?", "_");
+}
+function text(value) {
+  if (typeof value === "string")
+    return value;
+  if (value === null || value === void 0)
+    return "";
+  throw new Error("repo graph returned a non-string value");
+}
+function number(value) {
+  if (typeof value === "number")
+    return value;
+  if (typeof value === "bigint")
+    return Number(value);
+  throw new Error("repo graph returned a non-number value");
+}
+
+// node_modules/@adversarylabs/sdk/dist/repo-index.js
+import { open, readFile as readFile2 } from "node:fs/promises";
+import { join as join2 } from "node:path";
 import { createInterface } from "node:readline";
 var ADVERSARY_REPO_INDEX_ENV = "ADVERSARY_REPO_INDEX";
 var REPO_INDEX_SCHEMA_VERSION = "v1";
@@ -14818,13 +15044,13 @@ var RepoIndexUnavailableError = class extends Error {
   }
 };
 async function openRepoIndex(dir) {
-  const metaRaw = await readFile(join(dir, "meta.json"), "utf8");
+  const metaRaw = await readFile2(join2(dir, "meta.json"), "utf8");
   const meta = JSON.parse(metaRaw);
   if (meta.schemaVersion !== REPO_INDEX_SCHEMA_VERSION) {
     throw new RepoIndexUnavailableError(`unsupported repo-index schema ${meta.schemaVersion} (want ${REPO_INDEX_SCHEMA_VERSION})`);
   }
-  const files = await readJsonl(join(dir, "files.jsonl"));
-  const edges = await readJsonl(join(dir, "edges.jsonl"));
+  const files = await readJsonl(join2(dir, "files.jsonl"));
+  const edges = await readJsonl(join2(dir, "edges.jsonl"));
   return new MemoryRepoIndex(dir, meta, files, edges);
 }
 async function repoIndexFromEnvironment(env = process.env) {
@@ -14865,15 +15091,15 @@ var MemoryRepoIndex = class {
     return out;
   }
   async file(path) {
-    const normalized = normalizePath(path);
+    const normalized = normalizePath2(path);
     return this.files.find((file) => file.path === normalized);
   }
   async importsOf(path) {
-    const normalized = normalizePath(path);
+    const normalized = normalizePath2(path);
     return this.edges.filter((edge) => edge.from === normalized && edge.kind === "import");
   }
   async importersOf(path) {
-    const normalized = normalizePath(path);
+    const normalized = normalizePath2(path);
     const dir = dirOf(normalized);
     return this.edges.filter((edge) => {
       if (edge.kind !== "import") {
@@ -14883,7 +15109,7 @@ var MemoryRepoIndex = class {
     });
   }
 };
-function normalizePath(path) {
+function normalizePath2(path) {
   return path.replaceAll("\\", "/").replace(/^\.\//, "");
 }
 function dirOf(path) {
@@ -14915,10 +15141,12 @@ async function readJsonl(path) {
 }
 
 // node_modules/@adversarylabs/sdk/dist/repository-model.js
+import { execFile } from "node:child_process";
 import { createReadStream } from "node:fs";
 import { lstat, readdir, realpath } from "node:fs/promises";
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import { createInterface as createInterface2 } from "node:readline";
+import { promisify } from "node:util";
 var DEFAULT_MAX_ROUNDS = 6;
 var MAX_MAX_ROUNDS = 12;
 var DEFAULT_MAX_TOOL_CALLS = 24;
@@ -14937,6 +15165,7 @@ var MAX_OPERATION_PATH_LENGTH = 4096;
 var MAX_OPERATIONS_PER_ROUND = 8;
 var PLANNING_OUTPUT_TOKENS = 1500;
 var DEFAULT_PLANNING_TIMEOUT_MS = 12e4;
+var execFileAsync = promisify(execFile);
 var defaultExcludedSegments = /* @__PURE__ */ new Set([
   ".git",
   ".hg",
@@ -14976,7 +15205,7 @@ var repositoryPlanSchema = {
         additionalProperties: false,
         required: ["tool", "path", "cursor", "startLine", "endLine"],
         properties: {
-          tool: { type: "string", enum: ["list_directory", "read_file"] },
+          tool: { type: "string", enum: ["list_directory", "read_file", "read_change"] },
           path: { type: "string" },
           cursor: {
             type: "integer",
@@ -14995,7 +15224,7 @@ var repositoryPlanSchema = {
     }
   }
 };
-async function reviewWithRepositoryTools(model, repositoryRoot, request) {
+async function reviewWithRepositoryTools(model, repositoryRoot, request, change) {
   if (repositoryRoot === void 0 || repositoryRoot.trim() === "") {
     throw new ModelReviewError("Repository model tools require a rule-context repository root.", {
       code: "invalid_model_request"
@@ -15019,6 +15248,17 @@ async function reviewWithRepositoryTools(model, repositoryRoot, request) {
   let exhausted = false;
   let ready = false;
   let usage = {};
+  if (change !== void 0 && change !== null) {
+    const summary = {
+      tool: "change_summary",
+      ...change.baseRef === void 0 ? {} : { baseRef: change.baseRef },
+      ...change.headRef === void 0 ? {} : { headRef: change.headRef },
+      changedFiles: change.changedFiles.slice(0, 500),
+      worktree: change.worktree
+    };
+    toolResults.push(summary);
+    totalBytes += encodedBytes(summary);
+  }
   const initial = fitDirectoryResult(await executeListDirectory(root, ".", 0, budget.directoryPageSize, include, exclude), budget.maxTotalBytes);
   toolResults.push(initial);
   totalBytes += encodedBytes(initial);
@@ -15070,7 +15310,7 @@ async function reviewWithRepositoryTools(model, repositoryRoot, request) {
         if (operation.tool === "list_directory") {
           result = await executeListDirectory(root, operation.path, operation.cursor, budget.directoryPageSize, include, exclude);
           directoriesListed += 1;
-        } else {
+        } else if (operation.tool === "read_file") {
           result = await executeReadFile(root, operation, budget, include, exclude, `repo:read:${citations.length + 1}`);
           pendingCitation = {
             citationId: result.citationId,
@@ -15079,6 +15319,8 @@ async function reviewWithRepositoryTools(model, repositoryRoot, request) {
             endLine: result.endLine,
             content: result.content
           };
+        } else {
+          result = await executeReadChange(root, operation, budget, include, exclude, change);
         }
       } catch (error) {
         result = {
@@ -15156,6 +15398,7 @@ ${prompt}
 RETRIEVAL RULES:
 - list_directory reveals one deterministic, paginated directory page. Use cursor=0 initially and nextCursor from a prior result for another page. Set startLine=0 and endLine=0.
 - read_file retrieves an inclusive 1-based line range and creates an immutable citation. Set cursor=0.
+- read_change retrieves the patch for one path in change_summary. Set cursor=0, startLine=0, and endLine=0. Use it before judging changed behavior. It is navigation evidence, not a source citation; cite exact lines from a subsequent read_file.
 - Inspect implementation and relevant tests before setting ready=true.
 - Traverse only directories relevant to the requested review; do not inventory the entire repository.
 - Prefer focused line ranges around important behavior over whole files.
@@ -15244,14 +15487,14 @@ async function executeListDirectory(root, requestedPath, cursor, pageSize, inclu
     }
   }
   visible.sort((left, right) => left.type.localeCompare(right.type) || left.path.localeCompare(right.path));
-  const page = visible.slice(cursor, cursor + pageSize);
-  const nextCursor = cursor + page.length < visible.length ? cursor + page.length : -1;
+  const page2 = visible.slice(cursor, cursor + pageSize);
+  const nextCursor = cursor + page2.length < visible.length ? cursor + page2.length : -1;
   return {
     tool: "list_directory",
     path: relativePath,
     cursor,
     nextCursor,
-    entries: page
+    entries: page2
   };
 }
 function fitDirectoryResult(result, maximumBytes) {
@@ -15318,6 +15561,44 @@ async function executeReadFile(root, operation, budget, include, exclude, citati
     truncated
   };
 }
+async function executeReadChange(root, operation, budget, include, exclude, change) {
+  if (change === void 0 || change === null || change.baseRef === void 0) {
+    throw new Error("read_change requires a runner-provided change context");
+  }
+  const { relativePath } = await secureRepositoryPath(root, operation.path, "file");
+  if (!change.changedFiles.includes(relativePath)) {
+    throw new Error("read_change path is not in the runner-provided change set");
+  }
+  if (!isIncluded(relativePath, include) || isExcluded(relativePath, exclude)) {
+    throw new Error("read_change path is outside the configured repository file set");
+  }
+  const baseRef = validRevision(change.baseRef);
+  const headRef = change.worktree ? "WORKTREE" : validRevision(change.headRef ?? "");
+  const revisions = change.worktree ? [baseRef] : [baseRef, headRef];
+  const { stdout } = await execFileAsync("git", [
+    "-C",
+    root,
+    "--no-pager",
+    "diff",
+    "--no-ext-diff",
+    "--unified=40",
+    "--find-renames",
+    ...revisions,
+    "--",
+    relativePath
+  ], { encoding: "utf8", maxBuffer: Math.max(budget.maxBytesPerRead * 4, 1 << 20) });
+  const encoded = Buffer.from(stdout, "utf8");
+  const truncated = encoded.byteLength > budget.maxBytesPerRead;
+  const content = truncated ? new TextDecoder().decode(encoded.subarray(0, budget.maxBytesPerRead)) : stdout;
+  return { tool: "read_change", path: relativePath, baseRef, headRef, content, truncated };
+}
+function validRevision(value) {
+  const revision = value.trim();
+  if (revision === "" || revision.length > 512 || revision.startsWith("-") || revision.includes("\0") || revision.includes("\n") || revision.includes("\r")) {
+    throw new Error("change revision is invalid");
+  }
+  return revision;
+}
 async function secureRepositoryPath(root, requestedPath, kind) {
   const normalized = requestedPath.trim().replaceAll("\\", "/").replace(/^\.\/+/u, "") || ".";
   if (normalized.length > MAX_OPERATION_PATH_LENGTH || normalized.includes("\0") || isAbsolute(normalized) || normalized.split("/").includes("..")) {
@@ -15366,7 +15647,7 @@ function requireRepositoryPlan(value) {
   return plan;
 }
 function operationKey(operation) {
-  return operation.tool === "list_directory" ? `${operation.tool}:${operation.path}:${operation.cursor}` : `${operation.tool}:${operation.path}:${operation.startLine}:${operation.endLine}`;
+  return operation.tool === "list_directory" ? `${operation.tool}:${operation.path}:${operation.cursor}` : operation.tool === "read_change" ? `${operation.tool}:${operation.path}` : `${operation.tool}:${operation.path}:${operation.startLine}:${operation.endLine}`;
 }
 function encodedBytes(value) {
   return Buffer.byteLength(JSON.stringify(value), "utf8");
@@ -15381,8 +15662,8 @@ function addUsage(total, next) {
 }
 
 // node_modules/@adversarylabs/sdk/dist/sources.js
-import { readFile as readFile2, readdir as readdir2 } from "node:fs/promises";
-import { join as join2 } from "node:path";
+import { readFile as readFile3, readdir as readdir2 } from "node:fs/promises";
+import { join as join3 } from "node:path";
 var DEFAULT_IGNORE_DIRECTORIES = Object.freeze([
   ".git",
   ".next",
@@ -15400,7 +15681,7 @@ async function listInScopePaths(repoPath, change, options = {}) {
   const ignore = new Set(options.ignoreDirectories ?? DEFAULT_IGNORE_DIRECTORIES);
   let candidates;
   if (change !== null && change.scanMode === "changed") {
-    candidates = change.changedFiles.map(normalizePath2);
+    candidates = change.changedFiles.map(normalizePath3);
   } else {
     candidates = await walkRelative(repoPath, ignore);
   }
@@ -15428,10 +15709,10 @@ async function loadInScopeSources(repoPath, change, options = {}) {
     ignoreDirectories: options.ignoreDirectories
   });
   const wholeTarget = change === null || change.scanMode === "all";
-  const changedSet = new Set((change?.changedFiles ?? []).map(normalizePath2));
+  const changedSet = new Set((change?.changedFiles ?? []).map(normalizePath3));
   const sources = [];
   for (const path of paths) {
-    const content = await safeReadText(join2(repoPath, path), maxBytes);
+    const content = await safeReadText(join3(repoPath, path), maxBytes);
     if (content === void 0)
       continue;
     sources.push({
@@ -15442,13 +15723,13 @@ async function loadInScopeSources(repoPath, change, options = {}) {
   }
   return sources;
 }
-function normalizePath2(path) {
+function normalizePath3(path) {
   return path.replaceAll("\\", "/").replace(/^\.\//, "");
 }
 async function walkRelative(repoPath, ignore) {
   const out = [];
   async function visit(relativeDir) {
-    const abs = relativeDir === "" ? repoPath : join2(repoPath, relativeDir);
+    const abs = relativeDir === "" ? repoPath : join3(repoPath, relativeDir);
     let entries;
     try {
       entries = await readdir2(abs, { withFileTypes: true });
@@ -15474,7 +15755,7 @@ async function walkRelative(repoPath, ignore) {
 }
 async function safeReadText(absPath, maxBytes) {
   try {
-    const buffer = await readFile2(absPath);
+    const buffer = await readFile3(absPath);
     if (buffer.byteLength > maxBytes)
       return void 0;
     if (buffer.includes(0))
@@ -15649,7 +15930,8 @@ var Adversary = class {
     const registry = this.ruleDefinitions.snapshot();
     const change = normalizeChangeContext(options.input.change);
     const repoIndex = options.repoIndex !== void 0 ? options.repoIndex : await repoIndexFromEnvironment();
-    const context = createRuleContext(repoPath, change, summary, cache, collector, registry, options.model ?? unavailableModel(), repoIndex);
+    const repoGraph = options.repoGraph !== void 0 ? options.repoGraph : await repoGraphFromEnvironment();
+    const context = createRuleContext(repoPath, change, summary, cache, collector, registry, options.model ?? unavailableModel(), repoIndex, repoGraph);
     const includeSuppressed = options.includeSuppressed;
     for (const rule of this.rules) {
       log.debug(`running rule ${rule.id}`);
@@ -15743,7 +16025,7 @@ function toWireEvidence(evidence) {
   });
 }
 async function parseInput(path = DEFAULT_INPUT_PATH) {
-  const raw = await readFile3(path, "utf8");
+  const raw = await readFile4(path, "utf8");
   const parsed = JSON.parse(raw);
   if (!isRecord(parsed)) {
     throw new Error(`Invalid input at ${path}: expected an object.`);
@@ -15784,7 +16066,7 @@ async function writeOutput(output, path = DEFAULT_OUTPUT_PATH) {
 async function validateRunEnvelope(output) {
   let validator = envelopeValidator;
   if (validator === void 0) {
-    const schema = JSON.parse(await readFile3(new URL("../schemas/adversary.review.v1.schema.json", import.meta.url), "utf8"));
+    const schema = JSON.parse(await readFile4(new URL("../schemas/adversary.review.v1.schema.json", import.meta.url), "utf8"));
     validator = new import__2.Ajv2020({ allErrors: true, strict: true }).compile(schema);
     envelopeValidator = validator;
   }
@@ -15841,15 +16123,16 @@ function normalizeChangeContext(change) {
     worktree: change.head_ref === WORKTREE_HEAD_REF
   });
 }
-function createRuleContext(repoPath, change, summary, cache, collector, registry, model, repoIndex) {
+function createRuleContext(repoPath, change, summary, cache, collector, registry, model, repoIndex, repoGraph) {
   const absoluteRepoPath = resolve2(repoPath);
   return {
     repoPath: absoluteRepoPath,
     change,
     repoIndex,
+    repoGraph,
     summary,
     cache,
-    model: enhanceReviewModel(model, absoluteRepoPath),
+    model: enhanceReviewModel(model, absoluteRepoPath, change),
     relpath(path) {
       return relative2(absoluteRepoPath, isAbsolute2(path) ? path : resolve2(absoluteRepoPath, path));
     },
@@ -16294,15 +16577,15 @@ async function rewriteOpinionConcern(model, request) {
       code: "invalid_model_request"
     });
   }
-  const text = request.text.trim();
-  if (text === "") {
+  const text2 = request.text.trim();
+  if (text2 === "") {
     throw new ModelReviewError("Model concern text must be a non-empty string.", {
       code: "invalid_model_request"
     });
   }
-  if (isOpinionConcernPhrase(text)) {
+  if (isOpinionConcernPhrase(text2)) {
     return {
-      concern: requireOpinionConcern(text),
+      concern: requireOpinionConcern(text2),
       rewritten: false,
       provider: "local",
       model: "passthrough"
@@ -16322,7 +16605,7 @@ Return only a pure noun phrase that passes validation.`;
     const result = await model.review({
       prompt,
       input: {
-        text,
+        text: text2,
         ...lastError === void 0 ? {} : { previousError: lastError }
       },
       schema: OPINION_CONCERN_REWRITE_SCHEMA,
@@ -16381,9 +16664,9 @@ async function formatOpinionAsync(options) {
     posture: options.posture
   });
 }
-function enhanceReviewModel(model, repositoryRoot) {
+function enhanceReviewModel(model, repositoryRoot, change) {
   return {
-    review: (request) => request.tools?.repository === void 0 ? model.review(request) : reviewWithRepositoryTools(model, repositoryRoot, request),
+    review: (request) => request.tools?.repository === void 0 ? model.review(request) : reviewWithRepositoryTools(model, repositoryRoot, request, change),
     concern: (request) => rewriteOpinionConcern(model, request)
   };
 }
@@ -17190,11 +17473,11 @@ var ignoredSegments = /* @__PURE__ */ new Set([
   "vendor",
   "__fixtures__"
 ]);
-function normalizePath3(path) {
+function normalizePath4(path) {
   return path.replaceAll("\\", "/").replace(/^\.\/+/, "");
 }
 function isReviewableSource(path) {
-  const normalized = normalizePath3(path);
+  const normalized = normalizePath4(path);
   const segments = normalized.split("/");
   if (segments.some((segment) => ignoredSegments.has(segment))) return false;
   if (normalized.endsWith(".min.js") || normalized.endsWith(".generated.ts") || normalized.endsWith(".g.cs")) {
@@ -17214,12 +17497,12 @@ function isReviewableSource(path) {
 async function countReviewableSources(ctx) {
   if (ctx.change?.scanMode === "changed") {
     return new Set(
-      ctx.change.changedFiles.map(normalizePath3).filter(isReviewableSource)
+      ctx.change.changedFiles.map(normalizePath4).filter(isReviewableSource)
     ).size;
   }
   const matches = (await Promise.all(SOURCE_PATTERNS.map((pattern) => ctx.rglob(pattern)))).flat();
   return new Set(
-    matches.map(normalizePath3).filter(isReviewableSource)
+    matches.map(normalizePath4).filter(isReviewableSource)
   ).size;
 }
 
@@ -17587,17 +17870,17 @@ Output discipline:
 }
 
 // src/operational-targets.ts
-import { readFile as readFile4 } from "node:fs/promises";
-import { join as join3, posix } from "node:path";
+import { readFile as readFile5 } from "node:fs/promises";
+import { join as join4, posix } from "node:path";
 var MAX_SOURCE_BYTES = 256e3;
 var MAX_HINTS = 8;
 async function prepareOperationalTargetHints(ctx) {
-  const changedTemplates = (ctx.change?.changedFiles ?? []).map(normalizePath4).filter(isHelmTemplate).slice(0, MAX_HINTS);
+  const changedTemplates = (ctx.change?.changedFiles ?? []).map(normalizePath5).filter(isHelmTemplate).slice(0, MAX_HINTS);
   if (changedTemplates.length === 0) return [];
   const dockerfiles = [...new Set((await Promise.all([
     ctx.rglob("Dockerfile"),
     ctx.rglob("**/Dockerfile")
-  ])).flat().map(normalizePath4))].sort();
+  ])).flat().map(normalizePath5))].sort();
   const builds = await Promise.all(dockerfiles.map(async (path) => ({
     path,
     source: await readBoundedText(ctx.repoPath, path)
@@ -17688,7 +17971,7 @@ function builtEntrypoint(dockerfile, source, binary) {
   ) + 1;
   const entrypointLine = matchingLineNumbers(source, entrypointPattern)[0];
   return {
-    path: normalizePath4(posix.join(posix.dirname(normalizePath4(dockerfile)), sourcePath)),
+    path: normalizePath5(posix.join(posix.dirname(normalizePath5(dockerfile)), sourcePath)),
     evidenceLines: [buildLineNumber, entrypointLine].filter((line) => line !== void 0 && line > 0)
   };
 }
@@ -17704,7 +17987,7 @@ function lineNumberAt(source, index) {
 }
 async function readBoundedText(repoPath, path) {
   try {
-    const bytes = await readFile4(join3(repoPath, path));
+    const bytes = await readFile5(join4(repoPath, path));
     if (bytes.byteLength > MAX_SOURCE_BYTES || bytes.includes(0)) return void 0;
     return bytes.toString("utf8");
   } catch {
@@ -17714,7 +17997,7 @@ async function readBoundedText(repoPath, path) {
 function isHelmTemplate(path) {
   return /(?:^|\/)charts\/.*\/templates\/.*\.ya?ml$/i.test(path);
 }
-function normalizePath4(path) {
+function normalizePath5(path) {
   return path.replaceAll("\\", "/").replace(/^\.\/+/, "");
 }
 function escapeRegExp(value) {
@@ -17974,20 +18257,20 @@ function synthesizedAssessment(output, accepted) {
   )[0];
   return `${label} \u2014 The review identified ${accepted.length} evidence-backed engineering ${noun}; the highest priority is ${top?.title.toLowerCase()}.`;
 }
-function requireSubstantive(text, minimum, maximum, field) {
-  if (!isSubstantive(text, minimum, maximum)) {
+function requireSubstantive(text2, minimum, maximum, field) {
+  if (!isSubstantive(text2, minimum, maximum)) {
     throw new ModelReviewError(
       `Engineering Review returned placeholder, empty, or degenerate ${field}.`,
       { code: "invalid_model_judgment", retryable: true }
     );
   }
 }
-function isSubstantive(text, minimum, maximum) {
-  const normalized = text.trim();
+function isSubstantive(text2, minimum, maximum) {
+  const normalized = text2.trim();
   return normalized.length >= minimum && normalized.length <= maximum && !hasDegenerateRepetition(normalized) && !/^(?:assessment|detail|impact|none|placeholder|principle|quote|recommendation|string|summary|title|tradeoffs?)$/i.test(normalized);
 }
-function hasDegenerateRepetition(text) {
-  const units = text.toLowerCase().split(/(?:\r?\n+|(?<=[.!?])\s+)/).map((unit) => unit.replace(/[.!?]+$/u, "").trim()).filter((unit) => unit.length >= 2);
+function hasDegenerateRepetition(text2) {
+  const units = text2.toLowerCase().split(/(?:\r?\n+|(?<=[.!?])\s+)/).map((unit) => unit.replace(/[.!?]+$/u, "").trim()).filter((unit) => unit.length >= 2);
   const counts = /* @__PURE__ */ new Map();
   for (const unit of units) counts.set(unit, (counts.get(unit) ?? 0) + 1);
   return [...counts.values()].some((count) => count >= 4);
