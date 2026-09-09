@@ -155,11 +155,10 @@ test("fabricated citation IDs are rejected instead of presented", async () => {
     },
   );
 
-  await assert.rejects(
-    createApp().run({ input: { source: { path: root } }, model }),
-    (error: unknown) =>
-      error instanceof ModelReviewError && error.code === "invalid_model_evidence",
-  );
+  const result = await createApp().run({ input: { source: { path: root } }, model });
+  assert.deepEqual(result.findings, []);
+  assert.equal(result.opinion?.ship, undefined);
+  assert.ok(result.observations.some((note) => note.key === "review.evidence-incomplete"));
 });
 
 test("prepared repository citations resolve to source locations", async () => {

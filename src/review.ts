@@ -8,6 +8,8 @@ import {
   type Severity,
 } from "@adversarylabs/sdk";
 import { buildModelReviewRequest } from "./model-review.js";
+import { repairEvidence } from "./evidence-repair.js";
+import modelSchema from "../schemas/engineering-review.model.v1.schema.json" with { type: "json" };
 import type {
   EngineeringReviewOutput,
   ModelEvidence,
@@ -216,15 +218,21 @@ The previous attempt used placeholder, empty, or degenerate review prose. Produc
       observation,
       operationalTargetHints,
     ));
-  const accepted = bounded
+  const validEvidence = (item: ModelEvidence): boolean => evidenceFor(item, result.citations) !== undefined;
+  // Operational target checks require their prepared cross-artifact proof;
+  // a generic citation repair must never bypass that stronger boundary.
+  const missing = operationalTargetHints.length > 0 ? [] : bounded.filter((o) => !o.evidence.some(validEvidence));
+  const repaired = await repairEvidence(ctx, missing, result.citations ?? [],
+    modelSchema.properties.observations.items.properties.evidence, validEvidence);
+  const resolved = bounded.map((observation) => repaired.has(observation.id)
+    ? { ...observation, evidence: repaired.get(observation.id)! } : observation);
+  const accepted = resolved
     .filter((observation) =>
       emitObservation(ctx, observation, result.citations, operationalTargetHints)
     );
-  if (accepted.length !== bounded.length) {
-    throw new ModelReviewError(
-      "Engineering Review cited evidence that was not present in the cited source.",
-      { code: "invalid_model_evidence", retryable: false },
-    );
+  const withheld = resolved.filter((observation) => !accepted.includes(observation));
+  if (withheld.length > 0) {
+    ctx.review.observe({ key: "review.evidence-incomplete", summary: `${withheld.length} unsupported engineering candidates withheld after citation correction; supported findings are retained.`, metadata: { role: "context", observationIds: withheld.map((o) => o.id) } });
   }
   const risk = maxRisk(accepted.map((observation) => observation.severity));
   const blocking = accepted.some(
@@ -241,7 +249,9 @@ The previous attempt used placeholder, empty, or degenerate review prose. Produc
 
   ctx.review.assessment({
     risk,
-    summary: overallSummary,
+    summary: withheld.length > 0
+      ? "Partial engineering review — Unsupported candidates were withheld; supported findings are retained."
+      : overallSummary,
   });
 
   const strengths = output.strengths
@@ -271,6 +281,10 @@ The previous attempt used placeholder, empty, or degenerate review prose. Produc
   const concern = accepted.length > 0
     ? output.overall.primaryConcern.trim() || topObservation?.title
     : undefined;
+  if (withheld.length > 0) {
+    ctx.review.opinion({ summary: "Some engineering candidates could not be grounded in prepared source; no clean-review opinion." });
+    return;
+  }
   ctx.review.opinion(
     await formatOpinionAsync({
       ship,
