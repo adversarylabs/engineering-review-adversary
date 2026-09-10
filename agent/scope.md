@@ -34,6 +34,7 @@ Prefer **zero to four** high-confidence observations. Silence beats speculative 
 - Changed serialized-state decoders that enforce a required framing invariant only with a production-disabled assertion and then use a consumer proven to accept a malformed remainder as a successful partial decode
 - Maintainability with **material future cost**: wrong boundaries, harmful coupling, duplication that will rot
 - Caller- or mode-specific side effects added to shared code that demonstrably affect another reachable caller outside the applicable contract; intentional shared effects and correctly gated or caller-supplied policies stay quiet
+- Guard bypasses intended for one mode or input category that demonstrably remove a still-required contract protection from another reachable category; explicit contract changes and equivalent downstream guards stay quiet
 - Incorrectly globalized policy where aggregating distinct per-entity constraints changes which items are accepted or rejected
 - Alternate fast, vectorized, cached, or specialized paths that drop validity, presence, or tombstone semantics and therefore process invalid items differently from the generic path
 - Optimized, cached, pooled, or specialized paths that support repeating the same logical operation but leave concrete state after the first invocation that makes a later invocation fail, skip required work, or diverge from the generic path
