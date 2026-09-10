@@ -29,6 +29,7 @@ Prefer **zero to four** high-confidence observations. Silence beats speculative 
 - Incomplete implementation across related paths, callers, compatibility, or validation
 - Changed deployment or runtime configuration that declares a literal HTTP health, liveness, or readiness path for a proven repository-built service when prepared source exposes the complete applicable listener/route surface and the exact path has no reachable registration there
 - Incomplete remediation or migration where a changed contract is not carried through related layers, consumers, or lifecycle behavior
+- Events or audit records asserting completed state transitions that become observable before the authoritative change succeeds, without atomic publication or an equivalent consumer guarantee; intent events and truly deferred publication stay quiet
 - Required disable, unregister, restore, or cleanup effects skipped when an independent preceding operation fails or returns early, leaving concrete behavior that contradicts the changed contract
 - A change that explicitly claims conformance or migration to a normative versioned contract but demonstrably violates prepared combination, precedence, ordering, fallback, or compatibility requirements on a reachable path
 - Changed serialized-state decoders that enforce a required framing invariant only with a production-disabled assertion and then use a consumer proven to accept a malformed remainder as a successful partial decode

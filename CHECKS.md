@@ -2,6 +2,7 @@
 
 | Review area | Scans for |
 | --- | --- |
+| Completion-event ordering | Completed-transition events observable before a later fallible authoritative change, without atomic or equivalent guarantees; intent events, deferred dispatch, and confirmed provisional protocols stay quiet |
 | Guard exception scope | Existing contract protection bypassed for an intended exception also disappears for another proven reachable category that still requires it; gated exceptions and equivalent downstream guards stay quiet |
 | Correctness and completeness | Behavior gaps, broken invariants, missing cases, and incomplete implementation |
 | Declared operational targets | Literal HTTP health, liveness, or readiness paths for proven repository-built services that have no reachable registration on the applicable prepared listener/route surface; external or unresolved binaries, dynamic paths, non-HTTP probes, framework-provided routes, declarations proven to target another unowned process, partial source views, and routes registered on the applicable listener stay quiet |
