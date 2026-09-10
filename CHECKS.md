@@ -8,6 +8,7 @@
 | Normative contract conformance | Explicit conformance or migration changes whose reachable implementation contradicts prepared combination, precedence, ordering, fallback, or compatibility requirements |
 | No-op configuration contracts | Changed public/shared configuration that accepts a field in a mode where prepared declaration and consumer evidence prove the value has no effect and downstream cannot observe, preserve, or rely on it; explicitly informational or validation-driving fields, compatibility inputs documented as ignored, documented omission semantics, and incomplete consumer surfaces stay quiet |
 | Architecture and boundaries | Misplaced responsibilities, harmful coupling, and abstractions that weaken the design |
+| Shared-helper side effects | Caller-specific validation, warnings, or mutation leaking through shared code into a proven other caller; intentional shared contracts, correct mode gates, caller-supplied policies, and hypothetical consumers stay quiet |
 | Maintainability | Changes that make future reasoning, extension, or safe modification materially harder |
 | Failure-path completeness | Required disable, unregister, restore, or cleanup effects skipped when an independent preceding operation fails, leaving contradictory behavior reachable |
 | Repeated-use alternate paths | Optimized, cached, pooled, or specialized paths whose first supported invocation leaves concrete state that makes a later invocation of the same logical operation fail, skip work, or diverge from the generic path |
