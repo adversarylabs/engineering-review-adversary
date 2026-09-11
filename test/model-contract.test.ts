@@ -378,3 +378,13 @@ test("example compatibility requires harness, support and capability evidence", 
   assert.match(ENGINEERING_REVIEW_PROMPT, /Stay quiet for explicitly excluded examples, non-executable snippets/);
   assert.match(ENGINEERING_REVIEW_PROMPT, /do not hide a required platform regression by arbitrarily disabling coverage/);
 });
+
+test("miss-derived application contracts require proof and bounded counterexamples", () => {
+  assert.match(ENGINEERING_REVIEW_PROMPT, /reconstruct the small truth table/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /compare the declared or validated field name with the lookup key and fallback/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /two independently owned states use the same key/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /every reachable success, failure, early-return, and alternate-mode exit/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /opaque case-sensitive secrets, invariant machine formats/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /persistence API performs a real update/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /middleware translates generic errors equivalently/);
+});
