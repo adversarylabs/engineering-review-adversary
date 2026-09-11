@@ -2,6 +2,12 @@
 
 | Review area | Scans for |
 | --- | --- |
+| Predicate and source identity | Proven polarity reversals and create/update mappings that read the wrong validated field |
+| Shared state namespaces | Independent UI or persisted controls whose shared key causes cross-component state changes |
+| Terminal branch state | Alternate success/failure paths that retain pending state and leave an action permanently disabled or in progress |
+| Effective representation consistency | Proven canonicalization or locale contracts applied at one boundary but skipped at another |
+| Persistence touch semantics | Empty/elided writes that cannot refresh a timestamp or marker consumed as freshness state |
+| Boundary error protocols | Generic exceptions that bypass a proven framework/repository status-code contract |
 | Completion-event ordering | Completed-transition events observable before a later fallible authoritative change, without atomic or equivalent guarantees; intent events, deferred dispatch, and confirmed provisional protocols stay quiet |
 | Guard exception scope | Existing contract protection bypassed for an intended exception also disappears for another proven reachable category that still requires it; gated exceptions and equivalent downstream guards stay quiet |
 | Correctness and completeness | Behavior gaps, broken invariants, missing cases, and incomplete implementation |

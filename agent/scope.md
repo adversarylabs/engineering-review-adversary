@@ -49,6 +49,12 @@ Prefer **zero to four** high-confidence observations. Silence beats speculative 
 - Operational risk: blast radius, hidden behavior, rollout/rollback difficulty
 - Important **changed** behavior whose invariant is not actually proved — name the behavior and missing proof; do not demand “more tests” generically
 - Readability of intent **only when** confusion creates real correctness, contract, or ops risk (not bikeshed naming)
+- Proven predicate polarity reversals or create/update mappings that read a different validated field than the declared contract
+- Independent controls that collide through a shared URL, storage, cache, or persistence key
+- Reachable terminal branches that retain temporary pending/loading state and concretely strand an action
+- Divergent effective representations when a prepared canonicalization or user-locale contract governs every boundary
+- No-op persistence calls relied on to refresh a timestamp or marker that drives downstream freshness behavior
+- Generic handler exceptions that bypass a proven framework or repository error-to-response protocol
 
 - Parser entry gates that accept lexical forms forbidden by an established grammar when delegating to a more permissive shared helper; require concrete contract and consumer evidence.
 
@@ -75,6 +81,7 @@ Prefer **zero to four** high-confidence observations. Silence beats speculative 
 - Go concurrency races, channels, lifecycle → `go/concurrency` (and related)
 - Go HTTP / DB / CLI / modules / security shapes → matching `go/*`
 - Framework conventions, HTTP middleware details, DB transaction mechanics as idioms
+- Framework error classes and persistence mechanics remain specialist concerns unless prepared repository evidence establishes a broader client-visible or state-freshness contract violation
 - Security deep-dives (secrets, authz models, CVE class) → `security/*` / domain packs
 - Observability/instrumentation detail as such
 - Exhaustive testing technique / coverage metrics (as process lectures)

@@ -24,6 +24,115 @@ const cleanReview = {
   strengths: [],
 } as const;
 
+const missDerivedCalibration = [
+  {
+    name: "predicate polarity",
+    policy: /Predicate and source identity/,
+    vulnerable: "// internal plugins must stay in the collection\nconst visible = plugins.filter((plugin) => !plugin.internal);\n",
+    clean: "// internal plugins must stay in the collection\nconst visible = plugins.filter((plugin) => plugin.internal);\n",
+    title: "Predicate reverses the established plugin category",
+  },
+  {
+    name: "shared state namespace",
+    policy: /Shared state namespaces/,
+    vulnerable: "const category = searchParams.get('tab');\nsearchParams.set('tab', pluginCategory);\n",
+    clean: "const category = searchParams.get('category');\nsearchParams.set('category', pluginCategory);\n",
+    title: "Independent controls share the tab query key",
+  },
+  {
+    name: "terminal branch state",
+    policy: /Terminal branch state/,
+    vulnerable: "setLoading(true);\nif (minimal) return showSuccess();\n",
+    clean: "setLoading(true);\ntry { return showSuccess(); } finally { setLoading(false); }\n",
+    title: "Success branch retains the loading state",
+  },
+  {
+    name: "effective representation",
+    policy: /Effective representation consistency/,
+    vulnerable: "const locale = account.locale;\nreturn date.toLocaleDateString('en-US');\n",
+    clean: "const locale = account.locale;\nreturn date.toLocaleDateString(locale);\n",
+    title: "Rendered date bypasses the account locale",
+  },
+  {
+    name: "persistence touch",
+    policy: /Persistence touch semantics/,
+    vulnerable: "// Prisma skips empty updates; clients consume updatedAt as freshness\nawait prisma.event.update({ data: {} });\n",
+    clean: "// Clients consume updatedAt as freshness\nawait prisma.event.update({ data: { updatedAt: new Date() } });\n",
+    title: "Empty update cannot refresh the freshness marker",
+  },
+  {
+    name: "boundary error protocol",
+    policy: /Boundary error protocols/,
+    vulnerable: "// tRPC handlers map TRPCError to stable client status\nif (!session) throw new Error('unauthorized');\n",
+    clean: "// tRPC handlers map TRPCError to stable client status\nif (!session) throw new TRPCError({ code: 'UNAUTHORIZED' });\n",
+    title: "Authorization branch escapes the handler error protocol",
+  },
+] as const;
+
+test("miss-derived policies accept focused evidence-backed findings", async () => {
+  for (const sample of missDerivedCalibration) {
+    const root = await mkdtemp(join(tmpdir(), "engineering-review-miss-derived-vulnerable-"));
+    await writeFile(join(root, "app.ts"), sample.vulnerable);
+    const model: ReviewModel = repositoryReviewModel(["app.ts"], async <T>(request: ModelReviewRequest) => {
+      assert.match(request.prompt, sample.policy, sample.name);
+      return {
+        output: {
+          schemaVersion: 1,
+          overall: {
+            verdict: "needs-changes",
+            risk: "medium",
+            ship: false,
+            summary: `${sample.name} violates the contract established by the prepared source.`,
+            primaryConcern: sample.name,
+          },
+          observations: [{
+            id: `miss-derived-${sample.name.replaceAll(" ", "-")}`,
+            title: sample.title,
+            category: "correctness",
+            severity: "medium",
+            confidence: "high",
+            principle: "Changed behavior should preserve a contract proven by prepared repository evidence.",
+            summary: `${sample.name} sends the changed path to behavior contradicted by its prepared contract.`,
+            impact: "A reachable user or caller observes behavior that conflicts with the established contract.",
+            recommendation: "Make the changed branch preserve the contract shown by the prepared source.",
+            tradeoffs: "Keep the change local to the demonstrated branch and retain the existing contract.",
+            evidence: [{
+              citationId: "repo:read:1",
+              line: 1,
+              detail: "The first prepared line establishes the applicable contract or source of truth.",
+            }, {
+              citationId: "repo:read:1",
+              line: 2,
+              detail: "The second prepared line contains the changed behavior that violates that contract.",
+            }],
+          }],
+          strengths: [],
+        } as T,
+        provider: "fixture",
+        model: "fixture",
+      };
+    });
+    const result = await createApp().run({ input: { source: { path: root } }, model });
+    assert.equal(result.findings.length, 1, sample.name);
+    assert.equal(result.findings[0]?.evidence?.length, 2, sample.name);
+    assert.equal(result.opinion?.ship, false, sample.name);
+  }
+});
+
+test("miss-derived policies stay quiet for focused contract-preserving counterexamples", async () => {
+  for (const sample of missDerivedCalibration) {
+    const root = await mkdtemp(join(tmpdir(), "engineering-review-miss-derived-clean-"));
+    await writeFile(join(root, "app.ts"), sample.clean);
+    const model: ReviewModel = repositoryReviewModel(["app.ts"], async <T>(request: ModelReviewRequest) => {
+      assert.match(request.prompt, sample.policy, sample.name);
+      return { output: cleanReview as T, provider: "fixture", model: "fixture" };
+    });
+    const result = await createApp().run({ input: { source: { path: root } }, model });
+    assert.deepEqual(result.findings, [], sample.name);
+    assert.equal(result.opinion?.ship, true, sample.name);
+  }
+});
+
 test("placeholder observation prose receives one bounded repair attempt and then fails closed", async () => {
   const root = await mkdtemp(join(tmpdir(), "engineering-review-placeholder-"));
   await writeFile(join(root, "main.go"), "package main\n");
