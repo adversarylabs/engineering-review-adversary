@@ -52,6 +52,9 @@ Prefer **zero to four** high-confidence observations. Silence beats speculative 
 
 - Parser entry gates that accept lexical forms forbidden by an established grammar when delegating to a more permissive shared helper; require concrete contract and consumer evidence.
 
+- Load-time mutations of shared objects that leak specialization-only behavior into a proven reachable consumer outside that contract.
+- Executable examples exercised by an established harness on a supported configuration but requiring a proven unavailable capability; no hypothetical platforms or generic test requests.
+
 ## Out of scope (not a miss for this package)
 
 ### Taste and pure style → `review/nits` (or ignore)

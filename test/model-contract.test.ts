@@ -364,3 +364,17 @@ test("miss-derived policy requires contract evidence and clean counterexamples",
   assert.ok(ENGINEERING_REVIEW_PROMPT.includes('authoritative prepared grammar'));
   assert.ok(ENGINEERING_REVIEW_PROMPT.includes('Stay quiet for explicitly permissive grammars'));
 });
+
+test("load-time scope requires ownership and actual consumer reachability", () => {
+  assert.match(ENGINEERING_REVIEW_PROMPT, /rather than assuming lexical nesting isolates the effect/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /specialized file can load in that consumer's supported mode/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /mutation, shared ownership, reachable load path and concrete consequence together/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /Stay quiet for isolated per-instance or subclass-owned objects/);
+});
+
+test("example compatibility requires harness, support and capability evidence", () => {
+  assert.match(ENGINEERING_REVIEW_PROMPT, /example, harness\/configuration and capability restriction together/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /Do not infer execution from a fenced block alone/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /Stay quiet for explicitly excluded examples, non-executable snippets/);
+  assert.match(ENGINEERING_REVIEW_PROMPT, /do not hide a required platform regression by arbitrarily disabling coverage/);
+});
