@@ -16,3 +16,7 @@
 | Repeated-use alternate paths | Optimized, cached, pooled, or specialized paths whose first supported invocation leaves concrete state that makes a later invocation of the same logical operation fail, skip work, or diverge from the generic path |
 | Operational risk | Failure modes, rollout hazards, unsafe state transitions, and weak recovery behavior |
 | Validation quality | Missing or inadequate evidence that the changed behavior works and regressions are contained |
+
+## Miss-derived review boundary
+
+- Parser grammar boundaries: when a changed parser delegates to a permissive numeric/token helper, compare the helper's accepted spellings with the grammar at this exact syntactic position. Numeric value validity does not establish lexical validity: first-character restrictions, leading zeros, signs, empty tokens, and complete consumption may belong to the caller. Report only with a concrete accepted-invalid spelling, an authoritative prepared grammar or equivalent sibling parser, and a reachable parse result that violates that contract. Cite the entry gate, delegated helper, and contract together. Stay quiet for explicitly permissive grammars, later rejection before use, intentionally separate flag handling, or incomplete grammar evidence; do not universalize a particular format's width rules.

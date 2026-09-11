@@ -358,3 +358,9 @@ test("model request delegates bounded repository retrieval to the SDK", () => {
   assert.equal(request.tools?.repository?.maxToolCalls, 24);
   assert.equal(request.tools?.repository?.maxTotalBytes, 192_000);
 });
+
+test("miss-derived policy requires contract evidence and clean counterexamples", () => {
+  assert.ok(ENGINEERING_REVIEW_PROMPT.includes('Parser grammar boundaries'));
+  assert.ok(ENGINEERING_REVIEW_PROMPT.includes('authoritative prepared grammar'));
+  assert.ok(ENGINEERING_REVIEW_PROMPT.includes('Stay quiet for explicitly permissive grammars'));
+});
