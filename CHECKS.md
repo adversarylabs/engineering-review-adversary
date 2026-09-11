@@ -20,3 +20,5 @@
 ## Miss-derived review boundary
 
 - Parser grammar boundaries: when a changed parser delegates to a permissive numeric/token helper, compare the helper's accepted spellings with the grammar at this exact syntactic position. Numeric value validity does not establish lexical validity: first-character restrictions, leading zeros, signs, empty tokens, and complete consumption may belong to the caller. Report only with a concrete accepted-invalid spelling, an authoritative prepared grammar or equivalent sibling parser, and a reachable parse result that violates that contract. Cite the entry gate, delegated helper, and contract together. Stay quiet for explicitly permissive grammars, later rejection before use, intentionally separate flag handling, or incomplete grammar evidence; do not universalize a particular format's width rules.
+
+Miss-derived contract coverage: shared-object mutations during specialized loading require ownership, load-path and affected-consumer proof. Executable-example compatibility requires the actual harness, supported configuration and capability restriction; unproven or excluded execution stays quiet.
