@@ -50,6 +50,8 @@ Prefer **zero to four** high-confidence observations. Silence beats speculative 
 - Important **changed** behavior whose invariant is not actually proved — name the behavior and missing proof; do not demand “more tests” generically
 - Readability of intent **only when** confusion creates real correctness, contract, or ops risk (not bikeshed naming)
 
+- Parser entry gates that accept lexical forms forbidden by an established grammar when delegating to a more permissive shared helper; require concrete contract and consumer evidence.
+
 ## Out of scope (not a miss for this package)
 
 ### Taste and pure style → `review/nits` (or ignore)
