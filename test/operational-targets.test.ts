@@ -55,6 +55,7 @@ function context(root: string) {
     change: {
       scanMode: "changed" as const,
       changedFiles: ["charts/elasti/templates/deployment.yaml"],
+      changedRanges: [],
       worktree: false,
     },
     async rglob(pattern: string): Promise<string[]> {
